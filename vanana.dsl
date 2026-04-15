@@ -11,12 +11,14 @@ workspace "Vanana Platform" "High-level architecture for smart device management
             webApp = container "Web App" "Authenticated web application for Vanana users." "Angular" "Angular"
             spa = container "Single Page Application" "Client-side application experience loaded by the web app." "Angular" "WebBrowser,Angular"
             mobileApp = container "Mobile App" "Mobile application for Vanana users." "Flutter" "MobileApp"
+            mobileSqliteDatabase = container "Mobile SQLite Database" "Stores local mobile cache, user preferences, and offline data." "SQLite" "SQLite"
             apiGateway = container "API Gateway" "Routes client requests to Vanana backend services." "Spring Cloud Gateway / Java" "Gateway"
             iamService = container "IAM Service" "Handles identity, access management, authentication, authorization, and account notifications." "Spring Boot / Java 25" "SpringBoot"
             iamDatabase = container "IAM Database" "Stores users, credentials, roles, permissions, sessions, and identity provider links." "PostgreSQL" "Database"
             iamRedis = container "IAM Redis" "Stores short-lived IAM data such as sessions, tokens, rate limits, and verification codes." "Redis" "Redis"
-            billingService = container "Billing Service" "Handles subscriptions, invoices, payment status, and billing workflows." "Spring Boot / Java 25" "SpringBoot"
-            billingDatabase = container "Billing Database" "Stores subscriptions, invoices, payment records, plans, and billing events." "PostgreSQL" "Database"
+            clairEmbeddedApp = container "Clair Embedded Application" "Runs on the air sensor device to collect measurements and expose device telemetry locally." "Embedded firmware" "Embedded"
+            clairEdgeStationApp = container "Clair Edge Station Application" "Runs on-site as the local edge gateway for air sensor devices and synchronizes data with the platform." "Flask" "Edge"
+            edgeSqliteDatabase = container "Edge SQLite Database" "Stores local device state, telemetry snapshots, and offline synchronization data at the edge." "SQLite" "SQLite"
         }
 
         # External Systems with specific tags for coloring
@@ -45,15 +47,19 @@ workspace "Vanana Platform" "High-level architecture for smart device management
         webApp -> spa "Serves the Angular single page application assets" "HTTPS"
         spa -> apiGateway "Calls protected platform APIs through the gateway" "JSON/HTTPS"
         user -> mobileApp "Uses the mobile application to control devices and view account information" "HTTPS"
+        mobileApp -> mobileSqliteDatabase "Stores and retrieves local cache, user preferences, and offline data" "SQLite"
         mobileApp -> apiGateway "Calls protected platform APIs through the gateway" "JSON/HTTPS"
+        mobileApp -> clairEmbeddedApp "Connects locally to onboard, configure, and control the air sensor device" "Bluetooth/Wi-Fi Direct"
+        mobileApp -> clairEdgeStationApp "Connects locally to monitor edge status, configure synchronization, and manage nearby devices" "HTTPS/Local network"
         apiGateway -> iamService "Validates access tokens and delegates identity and access management requests" "JSON/HTTPS"
         iamService -> iamDatabase "Stores and retrieves users, credentials, roles, permissions, sessions, and provider links" "SQL"
         iamService -> iamRedis "Stores and retrieves short-lived sessions, tokens, rate limits, and verification codes" "RESP/TCP"
         iamService -> google "Delegates social login and identity verification" "OpenID Connect"
         iamService -> resend "Sends verification, password recovery, invitation, and account notification emails" "REST API"
-        apiGateway -> billingService "Delegates subscription, invoice, and payment management requests" "JSON/HTTPS"
-        billingService -> billingDatabase "Stores and retrieves subscriptions, invoices, payment records, plans, and billing events" "SQL"
-        billingService -> stripe "Creates checkout sessions, manages subscriptions, and receives payment status" "REST API/Webhooks"
+        clairEmbeddedApp -> hardware "Reads air quality measurements from the physical sensor hardware" "GPIO/I2C/UART"
+        clairEdgeStationApp -> clairEmbeddedApp "Collects telemetry and sends local device commands" "MQTT/Local network"
+        clairEdgeStationApp -> edgeSqliteDatabase "Stores and retrieves local device state, telemetry snapshots, and offline sync data" "SQLite"
+        clairEdgeStationApp -> apiGateway "Synchronizes edge data and receives platform commands" "JSON/HTTPS"
     }
 
     views {
@@ -69,13 +75,15 @@ workspace "Vanana Platform" "High-level architecture for smart device management
             include webApp
             include spa
             include mobileApp
+            include mobileSqliteDatabase
             include apiGateway
             include iamService
             include iamDatabase
             include iamRedis
-            include billingService
-            include billingDatabase
-            include stripe
+            include clairEmbeddedApp
+            include clairEdgeStationApp
+            include edgeSqliteDatabase
+            include hardware
             include google
             include resend
             include admin
@@ -124,9 +132,19 @@ workspace "Vanana Platform" "High-level architecture for smart device management
             element "SpringBoot" {
                 background #16a34a
             }
+            element "Embedded" {
+                background #ca8a04
+            }
+            element "Edge" {
+                background #0f766e
+            }
             element "Database" {
                 shape cylinder
                 background #4b5563
+            }
+            element "SQLite" {
+                shape cylinder
+                background #003b57
             }
             element "Redis" {
                 shape cylinder
