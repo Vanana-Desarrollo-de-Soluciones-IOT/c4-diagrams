@@ -2,8 +2,8 @@ workspace "Vanana Platform" "High-level architecture for smart device management
 
     model {
         # Users
-        admin = person "Facility Admin" "Administrator in charge of facility and building management."
-        user = person "Home User" "End user who controls their home devices."
+        admin = person "Facility Admin" "Owner or operator of multiple air sensors across one or more facilities or locations."
+        user = person "Home User" "Customer who owns or uses a personal air sensor at home."
 
         # Central System
         vanana = softwareSystem "Vanana Platform" "Central platform for monitoring, controlling, and automating IoT devices." {
@@ -13,9 +13,18 @@ workspace "Vanana Platform" "High-level architecture for smart device management
             mobileApp = container "Mobile App" "Mobile application for Vanana users." "Flutter" "MobileApp"
             mobileSqliteDatabase = container "Mobile SQLite Database" "Stores local mobile cache, user preferences, and offline data." "SQLite" "SQLite"
             apiGateway = container "API Gateway" "Routes client requests to Vanana backend services." "Spring Cloud Gateway / Java" "Gateway"
-            iamService = container "IAM Service" "Handles identity, access management, authentication, authorization, and account notifications." "Spring Boot / Java 25" "SpringBoot"
-            iamDatabase = container "IAM Database" "Stores users, credentials, roles, permissions, sessions, and identity provider links." "PostgreSQL" "Database"
-            iamRedis = container "IAM Redis" "Stores short-lived IAM data such as sessions, tokens, rate limits, and verification codes." "Redis" "Redis"
+            platformApi = container "Platform API" "Handles core Vanana features, identity and access management, facilities, devices, telemetry, and user-facing workflows." "Spring Boot / Java 25" "SpringBoot" {
+                iamContext = component "IAM" "Handles authentication, authorization, sessions, roles, permissions, and OAuth2 login flows." "Spring Boot / Java 25" "Bounded Context"
+                billingContext = component "Billing" "Handles plans, subscriptions, checkout sessions, invoices, and billing state." "Spring Boot / Java 25" "Bounded Context"
+                deviceSpaceContext = component "Device & Space Management" "Manages facilities, spaces, air sensors, device ownership, status, and configuration." "Spring Boot / Java 25" "Bounded Context"
+                airQualityContext = component "Air Quality Evaluation" "Receives and evaluates air quality telemetry, metrics, thresholds, and health states." "Spring Boot / Java 25" "Bounded Context"
+                alertingContext = component "Alerting & Response" "Creates alerts, notifications, and device response commands from air quality events." "Spring Boot / Java 25" "Bounded Context"
+                analyticsContext = component "Analytics" "Builds historical insights, trends, reports, and aggregated air quality summaries." "Spring Boot / Java 25" "Bounded Context"
+                notificationsContext = component "Notifications" "Manages notification templates, delivery requests, and notification history." "Spring Boot / Java 25" "Bounded Context"
+                sharedContext = component "Shared" "Provides shared kernel code, common primitives, cross-cutting utilities, and reusable infrastructure adapters." "Spring Boot / Java 25" "Shared Kernel"
+            }
+            platformDatabase = container "Platform PostgreSQL Database" "Stores facilities, devices, telemetry summaries, user preferences, and platform operational data." "PostgreSQL" "Database"
+            platformRedis = container "Platform Redis Database" "Stores sessions, access tokens, verification codes, rate limits, and short-lived platform data." "Redis" "Redis"
             clairEmbeddedApp = container "Clair Embedded Application" "Runs on the air sensor device to collect measurements and expose device telemetry locally." "Embedded firmware" "Embedded"
             clairEdgeStationApp = container "Clair Edge Station Application" "Runs on-site as the local edge gateway for air sensor devices and synchronizes data with the platform." "Flask" "Edge"
             edgeSqliteDatabase = container "Edge SQLite Database" "Stores local device state, telemetry snapshots, and offline synchronization data at the edge." "SQLite" "SQLite"
@@ -28,8 +37,8 @@ workspace "Vanana Platform" "High-level architecture for smart device management
         resend = softwareSystem "Resend" "External platform for transactional email delivery." "External,Email"
 
         # User Relationships
-        admin -> vanana "Manages facilities and monitors device fleets"
-        user -> vanana "Controls devices and views personal metrics"
+        admin -> vanana "Manages multiple facilities, sensors, and air quality monitoring operations"
+        user -> vanana "Controls a personal air sensor and views home air quality metrics"
 
         # System Relationships
         vanana -> hardware "Sends commands to and receives telemetry from" "MQTT/HTTPS"
@@ -37,9 +46,6 @@ workspace "Vanana Platform" "High-level architecture for smart device management
         vanana -> stripe "Processes payments and subscriptions via" "REST API"
         vanana -> resend "Sends transactional emails using" "REST API"
         
-        # Hardware to User Relationship
-        hardware -> user "Provides visual/physical feedback in the home"
-
         # Container Relationships
         admin -> landingPage "Visits the public website to learn about the platform and access the application" "HTTPS"
         user -> landingPage "Visits the public website to learn about the platform and access the application" "HTTPS"
@@ -47,19 +53,48 @@ workspace "Vanana Platform" "High-level architecture for smart device management
         webApp -> spa "Serves the Angular single page application assets" "HTTPS"
         spa -> apiGateway "Calls protected platform APIs through the gateway" "JSON/HTTPS"
         user -> mobileApp "Uses the mobile application to control devices and view account information" "HTTPS"
+        admin -> mobileApp "Uses the mobile application to monitor sensors and manage facilities while on-site" "HTTPS"
         mobileApp -> mobileSqliteDatabase "Stores and retrieves local cache, user preferences, and offline data" "SQLite"
-        mobileApp -> apiGateway "Calls protected platform APIs through the gateway" "JSON/HTTPS"
-        mobileApp -> clairEmbeddedApp "Connects locally to onboard, configure, and control the air sensor device" "Bluetooth/Wi-Fi Direct"
+        mobileApp -> apiGateway "Reads processed telemetry and sends remote device commands through the cloud" "JSON/HTTPS"
+        mobileApp -> clairEmbeddedApp "Sends local device commands such as power on/off and configuration changes" "Bluetooth/Wi-Fi Direct"
         mobileApp -> clairEdgeStationApp "Connects locally to monitor edge status, configure synchronization, and manage nearby devices" "HTTPS/Local network"
-        apiGateway -> iamService "Validates access tokens and delegates identity and access management requests" "JSON/HTTPS"
-        iamService -> iamDatabase "Stores and retrieves users, credentials, roles, permissions, sessions, and provider links" "SQL"
-        iamService -> iamRedis "Stores and retrieves short-lived sessions, tokens, rate limits, and verification codes" "RESP/TCP"
-        iamService -> google "Delegates social login and identity verification" "OpenID Connect"
-        iamService -> resend "Sends verification, password recovery, invitation, and account notification emails" "REST API"
+        apiGateway -> platformApi "Routes core platform API requests" "JSON/HTTPS"
+        platformApi -> platformDatabase "Stores and retrieves facilities, devices, telemetry summaries, and operational data" "SQL"
+        platformApi -> stripe "Creates checkout sessions, manages subscriptions, and receives payment status" "REST API/Webhooks"
+        platformApi -> platformRedis "Stores and retrieves sessions, access tokens, verification codes, rate limits, and short-lived platform data" "RESP/TCP"
+        platformApi -> google "Delegates social login and identity verification" "OpenID Connect"
+        platformApi -> resend "Sends verification, password recovery, invitation, and account notification emails" "REST API"
+        apiGateway -> iamContext "Routes authentication, authorization, and account requests" "JSON/HTTPS"
+        apiGateway -> billingContext "Routes subscription and billing requests" "JSON/HTTPS"
+        apiGateway -> deviceSpaceContext "Routes facility, space, and device management requests" "JSON/HTTPS"
+        apiGateway -> airQualityContext "Routes telemetry ingestion and air quality evaluation requests" "JSON/HTTPS"
+        apiGateway -> alertingContext "Routes alert and device response requests" "JSON/HTTPS"
+        apiGateway -> analyticsContext "Routes reports, trends, and analytics requests" "JSON/HTTPS"
+        apiGateway -> notificationsContext "Routes notification management requests" "JSON/HTTPS"
+        iamContext -> sharedContext "Uses shared kernel and cross-cutting utilities" "In-process call"
+        billingContext -> sharedContext "Uses shared kernel and cross-cutting utilities" "In-process call"
+        deviceSpaceContext -> sharedContext "Uses shared kernel and cross-cutting utilities" "In-process call"
+        airQualityContext -> sharedContext "Uses shared kernel and cross-cutting utilities" "In-process call"
+        alertingContext -> sharedContext "Uses shared kernel and cross-cutting utilities" "In-process call"
+        analyticsContext -> sharedContext "Uses shared kernel and cross-cutting utilities" "In-process call"
+        notificationsContext -> sharedContext "Uses shared kernel and cross-cutting utilities" "In-process call"
+        iamContext -> platformDatabase "Stores and retrieves IAM data" "SQL"
+        billingContext -> platformDatabase "Stores and retrieves billing data" "SQL"
+        deviceSpaceContext -> platformDatabase "Stores and retrieves device, facility, and space data" "SQL"
+        airQualityContext -> platformDatabase "Stores and retrieves air quality evaluation data" "SQL"
+        alertingContext -> platformDatabase "Stores and retrieves alerting and response data" "SQL"
+        analyticsContext -> platformDatabase "Stores and retrieves analytics and reporting data" "SQL"
+        iamContext -> platformRedis "Stores and retrieves sessions, access tokens, verification codes, and rate limits" "RESP/TCP"
+        iamContext -> google "Delegates social login and identity verification" "OpenID Connect"
+        notificationsContext -> platformDatabase "Stores and retrieves notification templates, delivery requests, and notification history" "SQL"
+        notificationsContext -> resend "Sends transactional and alert emails" "REST API"
+        billingContext -> stripe "Creates checkout sessions, manages subscriptions, and receives payment status" "REST API/Webhooks"
         clairEmbeddedApp -> hardware "Reads air quality measurements from the physical sensor hardware" "GPIO/I2C/UART"
+        clairEmbeddedApp -> mobileApp "Streams live air quality telemetry locally" "Bluetooth/Wi-Fi Direct"
         clairEdgeStationApp -> clairEmbeddedApp "Collects telemetry and sends local device commands" "MQTT/Local network"
         clairEdgeStationApp -> edgeSqliteDatabase "Stores and retrieves local device state, telemetry snapshots, and offline sync data" "SQLite"
-        clairEdgeStationApp -> apiGateway "Synchronizes edge data and receives platform commands" "JSON/HTTPS"
+        clairEdgeStationApp -> apiGateway "Sends processed air quality telemetry and device status to the cloud" "JSON/HTTPS"
+        apiGateway -> clairEdgeStationApp "Delivers remote device commands to the edge station" "JSON/HTTPS"
     }
 
     views {
@@ -77,9 +112,10 @@ workspace "Vanana Platform" "High-level architecture for smart device management
             include mobileApp
             include mobileSqliteDatabase
             include apiGateway
-            include iamService
-            include iamDatabase
-            include iamRedis
+            include platformApi
+            include platformDatabase
+            include stripe
+            include platformRedis
             include clairEmbeddedApp
             include clairEdgeStationApp
             include edgeSqliteDatabase
@@ -88,6 +124,12 @@ workspace "Vanana Platform" "High-level architecture for smart device management
             include resend
             include admin
             include user
+            autoLayout lr
+        }
+
+        component platformApi "PlatformApiComponents" {
+            description "Component diagram for the Platform API"
+            include *
             autoLayout lr
         }
 
@@ -115,6 +157,9 @@ workspace "Vanana Platform" "High-level architecture for smart device management
             }
             element "Container" {
                 background #2563eb
+            }
+            element "Component" {
+                background #1d4ed8
             }
             element "Landing" {
                 background #0f766e
