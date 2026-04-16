@@ -25,8 +25,19 @@ workspace "Vanana Platform" "High-level architecture for smart device management
             }
             platformDatabase = container "Platform PostgreSQL Database" "Stores facilities, devices, telemetry summaries, user preferences, and platform operational data." "PostgreSQL" "Database"
             platformRedis = container "Platform Redis Database" "Stores sessions, access tokens, verification codes, rate limits, and short-lived platform data." "Redis" "Redis"
-            clairEmbeddedApp = container "Clair Embedded Application" "Runs on the air sensor device to collect measurements and expose device telemetry locally." "Embedded firmware" "Embedded"
-            clairEdgeStationApp = container "Clair Edge Station Application" "Runs on-site as the local edge gateway for air sensor devices and synchronizes data with the platform." "Flask" "Edge"
+            clairEmbeddedApp = container "Clair Embedded Application" "Runs on the air sensor device to collect measurements and expose device telemetry locally." "Embedded firmware" "Embedded" {
+                embeddedController = component "Embedded Controller" "Inbound adapter that receives local commands and telemetry ticks." "C/C++" "InboundAdapter,Firmware"
+                embeddedTelemetryService = component "Embedded Telemetry Service" "Application service that validates and normalizes sensor readings before publish." "C/C++" "ApplicationService,Firmware"
+                embeddedDomainModel = component "Embedded Domain Model" "Domain rules for device safety, valid ranges, and state transitions." "C/C++" "DomainModel,Firmware"
+                embeddedIoAdapter = component "Embedded IO Adapter" "Outbound adapter for hardware IO, local state cache, and BLE/Wi-Fi telemetry publishing." "GPIO/I2C/UART + BLE/Wi-Fi" "OutboundAdapter,Firmware"
+            }
+            clairEdgeStationApp = container "Clair Edge Station Application" "Runs on-site as the local edge gateway for air sensor devices and synchronizes data with the platform." "Flask" "Edge" {
+                edgeController = component "Edge Controller" "Inbound adapter that exposes local HTTP endpoints for mobile/operator access." "Flask/Python" "InboundAdapter,EdgeComponent"
+                edgeProcessingService = component "Edge Processing Service" "Application service that ingests telemetry, deduplicates, and prepares local records." "Python" "ApplicationService,EdgeComponent"
+                edgeSyncService = component "Edge Sync Service" "Application service that coordinates offline-first synchronization and command dispatch." "Python" "ApplicationService,EdgeComponent"
+                edgeDomainModel = component "Edge Domain Model" "Domain rules for ingestion, deduplication, retry windows, and command routing constraints." "Python" "DomainModel,EdgeComponent"
+                edgeIoAdapter = component "Edge IO Adapter" "Outbound adapter for MQTT device messaging, HTTPS cloud sync, and SQLite persistence." "MQTT + HTTPS + SQLite" "OutboundAdapter,EdgeComponent"
+            }
             edgeSqliteDatabase = container "Edge SQLite Database" "Stores local device state, telemetry snapshots, and offline synchronization data at the edge." "SQLite" "SQLite"
         }
 
@@ -56,8 +67,6 @@ workspace "Vanana Platform" "High-level architecture for smart device management
         admin -> mobileApp "Uses the mobile application to monitor sensors and manage facilities while on-site" "HTTPS"
         mobileApp -> mobileSqliteDatabase "Stores and retrieves local cache, user preferences, and offline data" "SQLite"
         mobileApp -> apiGateway "Reads processed telemetry and sends remote device commands through the cloud" "JSON/HTTPS"
-        mobileApp -> clairEmbeddedApp "Sends local device commands such as power on/off and configuration changes" "Bluetooth/Wi-Fi Direct"
-        mobileApp -> clairEdgeStationApp "Connects locally to monitor edge status, configure synchronization, and manage nearby devices" "HTTPS/Local network"
         apiGateway -> platformApi "Routes core platform API requests" "JSON/HTTPS"
         platformApi -> platformDatabase "Stores and retrieves facilities, devices, telemetry summaries, and operational data" "SQL"
         platformApi -> stripe "Creates checkout sessions, manages subscriptions, and receives payment status" "REST API/Webhooks"
@@ -90,11 +99,29 @@ workspace "Vanana Platform" "High-level architecture for smart device management
         notificationsContext -> resend "Sends transactional and alert emails" "REST API"
         billingContext -> stripe "Creates checkout sessions, manages subscriptions, and receives payment status" "REST API/Webhooks"
         clairEmbeddedApp -> hardware "Reads air quality measurements from the physical sensor hardware" "GPIO/I2C/UART"
-        clairEmbeddedApp -> mobileApp "Streams live air quality telemetry locally" "Bluetooth/Wi-Fi Direct"
+        hardware -> embeddedIoAdapter "Provides raw measurements and actuator interfaces" "GPIO/I2C/UART"
+        embeddedIoAdapter -> embeddedController "Delivers local command payloads and sensor tick inputs" "In-process call"
+        embeddedController -> embeddedTelemetryService "Invokes telemetry and command use cases" "In-process call"
+        embeddedTelemetryService -> embeddedDomainModel "Applies safety and validity rules" "In-process call"
+        embeddedTelemetryService -> embeddedIoAdapter "Publishes telemetry and updates local runtime state" "In-process call"
+        embeddedTelemetryService -> hardware "Applies safe device-level actions when required" "GPIO/I2C/UART"
         clairEdgeStationApp -> clairEmbeddedApp "Collects telemetry and sends local device commands" "MQTT/Local network"
         clairEdgeStationApp -> edgeSqliteDatabase "Stores and retrieves local device state, telemetry snapshots, and offline sync data" "SQLite"
         clairEdgeStationApp -> apiGateway "Sends processed air quality telemetry and device status to the cloud" "JSON/HTTPS"
         apiGateway -> clairEdgeStationApp "Delivers remote device commands to the edge station" "JSON/HTTPS"
+        embeddedIoAdapter -> clairEdgeStationApp "Publishes local telemetry to the edge station" "MQTT/Local network"
+        edgeController -> edgeProcessingService "Invokes local telemetry and health use cases" "In-process call"
+        edgeController -> edgeSyncService "Invokes sync and command use cases" "In-process call"
+        edgeIoAdapter -> edgeProcessingService "Forwards telemetry messages from embedded devices" "In-process call"
+        edgeProcessingService -> edgeDomainModel "Applies ingestion and deduplication rules" "In-process call"
+        edgeProcessingService -> edgeIoAdapter "Persists validated telemetry snapshots" "In-process call"
+        edgeSyncService -> edgeDomainModel "Applies retry, batching, and routing rules" "In-process call"
+        edgeSyncService -> edgeIoAdapter "Reads local queue/checkpoints and pushes telemetry" "In-process call"
+        edgeIoAdapter -> apiGateway "Synchronizes edge telemetry and status" "JSON/HTTPS"
+        apiGateway -> edgeController "Delivers remote commands to edge station endpoints" "JSON/HTTPS"
+        edgeSyncService -> edgeIoAdapter "Dispatches commands to target embedded devices" "MQTT/Local network"
+        edgeIoAdapter -> clairEmbeddedApp "Dispatches commands and receives telemetry streams" "MQTT/Local network"
+        edgeIoAdapter -> edgeSqliteDatabase "Stores snapshots, queues, and checkpoints" "SQLite"
     }
 
     views {
@@ -129,6 +156,18 @@ workspace "Vanana Platform" "High-level architecture for smart device management
 
         component platformApi "PlatformApiComponents" {
             description "Component diagram for the Platform API"
+            include *
+            autoLayout lr
+        }
+
+        component clairEmbeddedApp "EmbeddedAppComponents" {
+            description "Component diagram for the Clair Embedded Application"
+            include *
+            autoLayout lr
+        }
+
+        component clairEdgeStationApp "EdgeStationComponents" {
+            description "Component diagram for the Clair Edge Station Application"
             include *
             autoLayout lr
         }
@@ -180,8 +219,26 @@ workspace "Vanana Platform" "High-level architecture for smart device management
             element "Embedded" {
                 background #ca8a04
             }
+            element "Firmware" {
+                background #a16207
+            }
             element "Edge" {
                 background #0f766e
+            }
+            element "EdgeComponent" {
+                background #115e59
+            }
+            element "InboundAdapter" {
+                background #0ea5e9
+            }
+            element "ApplicationService" {
+                background #0f766e
+            }
+            element "DomainModel" {
+                background #166534
+            }
+            element "OutboundAdapter" {
+                background #b45309
             }
             element "Database" {
                 shape cylinder
