@@ -154,6 +154,8 @@ workspace "Vanana Platform" "High-level architecture for smart device management
         alertingContext -> sharedContext "Uses shared kernel and cross-cutting utilities" "In-process call"
         analyticsContext -> sharedContext "Uses shared kernel and cross-cutting utilities" "In-process call"
         notificationsContext -> sharedContext "Uses shared kernel and cross-cutting utilities" "In-process call"
+        airQualityContext -> alertingContext "Publishes threshold breach events for alert generation" "In-process event"
+        alertingContext -> notificationsContext "Requests delivery for generated alerts" "In-process call"
         iamContext -> platformDatabase "Stores and retrieves IAM data" "SQL"
         billingContext -> platformDatabase "Stores and retrieves billing data" "SQL"
         deviceSpaceContext -> platformDatabase "Stores and retrieves device, facility, and space data" "SQL"
@@ -189,6 +191,7 @@ workspace "Vanana Platform" "High-level architecture for smart device management
         edgeSyncService -> edgeIoAdapter "Dispatches commands to target embedded devices" "MQTT/Local network"
         edgeIoAdapter -> clairEmbeddedApp "Dispatches commands and receives telemetry streams" "MQTT/Local network"
         edgeIoAdapter -> edgeSqliteDatabase "Stores snapshots, queues, and checkpoints" "SQLite"
+
     }
 
     views {
@@ -222,7 +225,7 @@ workspace "Vanana Platform" "High-level architecture for smart device management
         }
 
         component platformApi "PlatformApiComponents" {
-            description "Component diagram for the Platform API"
+            description "Bounded context component diagram for the Platform API"
             include apiGateway
             include iamContext
             include billingContext
