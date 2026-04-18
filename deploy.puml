@@ -1,0 +1,63 @@
+@startuml
+left to right direction
+
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+actor "Home User" as home
+actor "Facility Admin" as facility
+
+rectangle "Firebase" {
+    rectangle "Mobile App\n(Flutter)" as mobileapp
+    database "SQLite" as sqlite_mobile
+}
+
+rectangle "Vercel (Frontend)" as v1 {
+    rectangle "Landing Page\n(HTML, CSS, JS)" as landing
+}
+
+rectangle "Vercel (Dashboard)" as v2 {
+    rectangle "Web App (Angular)" as webapp
+    rectangle "SPA (Angular)" as spa
+}
+
+rectangle "Azure Event Hub (Backend)" {
+    rectangle "API GATEWAY\n(Spring Cloud)" as gateway
+    rectangle "API Platform\n(Java 25, Spring)" as platform
+    
+    database "Azure Database for\nPostgreSQL" as postgres
+    database "Redis Cloud" as redis
+}
+
+rectangle "Azure IoT (Edge)" {
+    rectangle "Embedded Application\n(C++)" as embedded
+    rectangle "Edge Application\n(Python Flask)" as edge
+    database "SQLite" as sqlite_edge
+}
+
+' --- User Relationships ---
+home --> mobileapp : "Monitors and controls"
+home --> landing : "Views information"
+facility --> mobileapp : "Manages devices"
+facility --> landing : "Reviews services"
+
+' --- Frontend Flow ---
+landing --> webapp : "Call to Action (Login/Sign-up)"
+webapp --> spa : "Loads main module"
+
+' --- Mobile & Web Connections ---
+mobileapp --> sqlite_mobile : "Local persistence"
+mobileapp --> gateway : "HTTPS/REST requests"
+spa --> gateway : "API consumption"
+
+' --- Backend Orchestration ---
+gateway -right-> platform : "Routing"
+platform --> postgres : "Persistent storage"
+platform --> redis : "Session/Real-time cache"
+
+' --- IoT/Edge Flow ---
+embedded -right-> edge : "Sends telemetry"
+edge --> sqlite_edge : "Local data buffer"
+edge --> gateway : "Data synchronization"
+
+@enduml
