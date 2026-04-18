@@ -1,0 +1,48 @@
+@startuml
+title Analytics & Reporting - Domain Layer Class Diagram
+
+hide circle
+skinparam classAttributeIconSize 0
+
+class HistoricalAggregate {
+  +id: AggregateId
+  +periodStart: Instant
+  +periodEnd: Instant
+}
+
+class DigestReport {
+  +id: DigestId
+  +type: DigestType
+  +generatedAt: Instant
+}
+
+enum DigestType {
+  Daily
+  Weekly
+  Monthly
+}
+
+class TrendInsight {
+  +id: InsightId
+  +description: String
+}
+
+class VentilationRecommendation {
+  +id: RecommendationId
+  +bestHour: int
+}
+
+class AggregateId
+class DigestId
+class InsightId
+class RecommendationId
+
+HistoricalAggregate "1" o-- "*" TrendInsight
+DigestReport "1" o-- "*" TrendInsight
+DigestReport "0..1" --> VentilationRecommendation
+HistoricalAggregate --> AggregateId
+DigestReport --> DigestId
+TrendInsight --> InsightId
+VentilationRecommendation --> RecommendationId
+
+@enduml

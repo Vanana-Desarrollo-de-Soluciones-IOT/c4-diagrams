@@ -1,0 +1,63 @@
+@startuml
+title Device & Space Management - Database Design Diagram
+
+hide circle
+skinparam linetype ortho
+
+entity facilities {
+  * id : uuid <<PK>>
+  --
+  owner_user_id : uuid
+  name : varchar
+  created_at : timestamp
+}
+
+entity spaces {
+  * id : uuid <<PK>>
+  --
+  facility_id : uuid <<FK>>
+  name : varchar
+  floor : int
+  area_type : varchar
+}
+
+entity devices {
+  * id : uuid <<PK>>
+  --
+  facility_id : uuid <<FK>>
+  assigned_space_id : uuid <<FK>>
+  serial_number : varchar
+  status : varchar
+  paired_at : timestamp
+  registered_at : timestamp
+}
+
+entity threshold_profiles {
+  * id : uuid <<PK>>
+  --
+  facility_id : uuid <<FK>>
+  device_id : uuid <<FK>>
+  co2_limit : decimal
+  pm25_limit : decimal
+  humidity_min : decimal
+  humidity_max : decimal
+  temperature_min : decimal
+  temperature_max : decimal
+}
+
+entity device_status_history {
+  * id : uuid <<PK>>
+  --
+  device_id : uuid <<FK>>
+  status : varchar
+  recorded_at : timestamp
+}
+
+facilities ||--o{ spaces
+facilities ||--o{ devices
+spaces ||--o{ devices
+facilities ||--o{ threshold_profiles
+devices ||--o{ threshold_profiles
+devices ||--o{ device_status_history
+
+@enduml

@@ -1,0 +1,60 @@
+@startuml
+title Billing - Database Design Diagram
+
+hide circle
+skinparam linetype ortho
+
+entity plans {
+  * id : uuid <<PK>>
+  --
+  name : varchar
+  monthly_price : decimal
+  max_devices : int
+  history_window_days : int
+}
+
+entity subscriptions {
+  * id : uuid <<PK>>
+  --
+  user_id : uuid
+  plan_id : uuid <<FK>>
+  status : varchar
+  started_at : timestamp
+  ends_at : timestamp
+  trial_ends_at : timestamp
+}
+
+entity checkout_sessions {
+  * id : uuid <<PK>>
+  --
+  subscription_id : uuid <<FK>>
+  provider_reference : varchar
+  status : varchar
+  expires_at : timestamp
+}
+
+entity invoices {
+  * id : uuid <<PK>>
+  --
+  subscription_id : uuid <<FK>>
+  amount : decimal
+  currency : varchar
+  status : varchar
+  issued_at : timestamp
+}
+
+entity billing_events {
+  * id : uuid <<PK>>
+  --
+  subscription_id : uuid <<FK>>
+  event_type : varchar
+  provider_event_id : varchar
+  occurred_at : timestamp
+}
+
+plans ||--o{ subscriptions
+subscriptions ||--o{ checkout_sessions
+subscriptions ||--o{ invoices
+subscriptions ||--o{ billing_events
+
+@enduml

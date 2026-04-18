@@ -1,0 +1,51 @@
+@startuml
+title Analytics & Reporting - Database Design Diagram
+
+hide circle
+skinparam linetype ortho
+
+entity historical_aggregates {
+  * id : uuid <<PK>>
+  --
+  device_id : uuid
+  period_start : timestamp
+  period_end : timestamp
+  avg_co2 : decimal
+  avg_pm25 : decimal
+  avg_humidity : decimal
+  avg_temperature : decimal
+}
+
+entity daily_digests {
+  * id : uuid <<PK>>
+  --
+  user_id : uuid
+  generated_at : timestamp
+  summary_text : text
+}
+
+entity weekly_digests {
+  * id : uuid <<PK>>
+  --
+  facility_id : uuid
+  generated_at : timestamp
+  summary_text : text
+}
+
+entity monthly_reports {
+  * id : uuid <<PK>>
+  --
+  user_id : uuid
+  generated_at : timestamp
+  report_uri : varchar
+}
+
+entity ventilation_recommendations {
+  * id : uuid <<PK>>
+  --
+  facility_id : uuid
+  best_hour : int
+  generated_at : timestamp
+}
+
+@enduml

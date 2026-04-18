@@ -1,0 +1,63 @@
+@startuml
+title Device & Space Management - Domain Layer Class Diagram
+
+hide circle
+skinparam classAttributeIconSize 0
+
+class Facility {
+  +id: FacilityId
+  +name: String
+  +createSpace()
+  +applyDefaultThresholds()
+}
+
+class Space {
+  +id: SpaceId
+  +name: String
+  +floor: int
+  +areaType: String
+}
+
+class Device {
+  +id: DeviceId
+  +serialNumber: String
+  +status: DeviceStatus
+  +pair()
+  +register()
+  +assignTo(space: Space)
+}
+
+class ThresholdProfile {
+  +id: ThresholdProfileId
+  +co2Limit: decimal
+  +pm25Limit: decimal
+  +humidityMin: decimal
+  +humidityMax: decimal
+  +temperatureMin: decimal
+  +temperatureMax: decimal
+}
+
+enum DeviceStatus {
+  Pending
+  Online
+  Offline
+  Anomalous
+}
+
+class FacilityId
+class SpaceId
+class DeviceId
+class ThresholdProfileId
+
+Facility "1" o-- "*" Space
+Facility "1" o-- "*" Device
+Facility "1" o-- "1" ThresholdProfile : default
+Space "1" <-- "0..*" Device : assigned to
+Device "0..1" --> "1" ThresholdProfile : custom
+
+Facility --> FacilityId
+Space --> SpaceId
+Device --> DeviceId
+ThresholdProfile --> ThresholdProfileId
+
+@enduml

@@ -1,0 +1,72 @@
+@startuml
+title Identity & Access - Domain Layer Class Diagram
+
+hide circle
+skinparam classAttributeIconSize 0
+
+enum UserStatus {
+  PendingVerification
+  Active
+  Deactivated
+}
+
+enum AuthProviderType {
+  Local
+  Google
+}
+
+class User {
+  +id: UserId
+  +email: Email
+  +passwordHash: PasswordHash
+  +status: UserStatus
+  +provider: AuthProviderType
+  +register()
+  +verifyEmail()
+  +deactivate()
+  +assignRole(role: Role)
+}
+
+class Role {
+  +id: RoleId
+  +name: RoleName
+}
+
+class Permission {
+  +id: PermissionId
+  +code: String
+}
+
+class Session {
+  +id: SessionId
+  +accessToken: AccessToken
+  +refreshToken: RefreshToken
+  +expiresAt: Instant
+  +revoke()
+  +refresh()
+}
+
+class Email
+class PasswordHash
+class AccessToken
+class RefreshToken
+class UserId
+class RoleId
+class RoleName
+class PermissionId
+class SessionId
+
+User "1" o-- "*" Role
+Role "*" o-- "*" Permission
+User "1" o-- "*" Session
+User --> Email
+User --> PasswordHash
+User --> UserId
+Role --> RoleId
+Role --> RoleName
+Permission --> PermissionId
+Session --> SessionId
+Session --> AccessToken
+Session --> RefreshToken
+
+@enduml

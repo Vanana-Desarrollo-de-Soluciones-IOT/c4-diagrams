@@ -1,0 +1,57 @@
+@startuml
+title Alerting & Response - Domain Layer Class Diagram
+
+hide circle
+skinparam classAttributeIconSize 0
+
+enum AlertStatus {
+  Open
+  Acknowledged
+  Resolved
+}
+
+class CriticalAlert {
+  +id: AlertId
+  +metric: String
+  +severity: AlertSeverity
+  +status: AlertStatus
+  +acknowledge()
+  +resolve()
+}
+
+class AlertReminder {
+  +id: ReminderId
+  +sentAt: Instant
+}
+
+class CorrectiveAction {
+  +id: ActionId
+  +type: ActionType
+  +performedAt: Instant
+}
+
+enum ActionType {
+  OpenWindows
+  TurnOnHVAC
+  ReduceOccupancy
+}
+
+class CooldownPolicy {
+  +windowMinutes: int
+  +shouldSuppress(): boolean
+}
+
+class AlertSeverity
+class AlertId
+class ReminderId
+class ActionId
+
+CriticalAlert "1" o-- "*" AlertReminder
+CriticalAlert "1" o-- "*" CorrectiveAction
+CriticalAlert --> AlertSeverity
+CriticalAlert --> CooldownPolicy
+CriticalAlert --> AlertId
+AlertReminder --> ReminderId
+CorrectiveAction --> ActionId
+
+@enduml

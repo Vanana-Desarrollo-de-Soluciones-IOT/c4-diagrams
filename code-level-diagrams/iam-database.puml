@@ -1,0 +1,70 @@
+@startuml
+title Identity & Access - Database Design Diagram
+
+hide circle
+skinparam linetype ortho
+
+entity users {
+  * id : uuid <<PK>>
+  --
+  email : varchar
+  password_hash : varchar
+  status : varchar
+  auth_provider : varchar
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity roles {
+  * id : uuid <<PK>>
+  --
+  name : varchar
+  description : varchar
+}
+
+entity permissions {
+  * id : uuid <<PK>>
+  --
+  code : varchar
+  description : varchar
+}
+
+entity user_roles {
+  * user_id : uuid <<FK>>
+  * role_id : uuid <<FK>>
+  --
+  assigned_at : timestamp
+}
+
+entity role_permissions {
+  * role_id : uuid <<FK>>
+  * permission_id : uuid <<FK>>
+}
+
+entity sessions {
+  * id : uuid <<PK>>
+  --
+  user_id : uuid <<FK>>
+  access_token_jti : varchar
+  refresh_token_jti : varchar
+  expires_at : timestamp
+  revoked_at : timestamp
+}
+
+entity verification_tokens {
+  * id : uuid <<PK>>
+  --
+  user_id : uuid <<FK>>
+  token : varchar
+  expires_at : timestamp
+  consumed_at : timestamp
+}
+
+users ||--o{ user_roles
+roles ||--o{ user_roles
+roles ||--o{ role_permissions
+permissions ||--o{ role_permissions
+users ||--o{ sessions
+users ||--o{ verification_tokens
+
+@enduml

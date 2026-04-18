@@ -1,0 +1,40 @@
+@startuml
+title Edge Station - Domain Layer Class Diagram
+
+hide circle
+skinparam classAttributeIconSize 0
+
+class LocalTelemetryRecord {
+  +id: RecordId
+  +deviceId: String
+  +capturedAt: Instant
+}
+
+class SyncQueue {
+  +enqueue()
+  +dequeue()
+}
+
+class SyncCheckpoint {
+  +lastSyncedAt: Instant
+}
+
+class RetryWindow {
+  +maxAttempts: int
+  +nextAttemptAt: Instant
+}
+
+class CommandDispatch {
+  +commandType: String
+  +dispatch()
+}
+
+class RecordId
+
+SyncQueue "1" o-- "*" LocalTelemetryRecord
+SyncQueue --> SyncCheckpoint
+SyncQueue --> RetryWindow
+CommandDispatch --> LocalTelemetryRecord : targets device context
+LocalTelemetryRecord --> RecordId
+
+@enduml

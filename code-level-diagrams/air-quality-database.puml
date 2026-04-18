@@ -1,0 +1,56 @@
+@startuml
+title Air Quality Evaluation - Database Design Diagram
+
+hide circle
+skinparam linetype ortho
+
+entity telemetry_readings {
+  * id : uuid <<PK>>
+  --
+  device_id : uuid
+  metric : varchar
+  value : decimal
+  captured_at : timestamp
+  ingested_at : timestamp
+}
+
+entity telemetry_batches {
+  * id : uuid <<PK>>
+  --
+  device_id : uuid
+  received_at : timestamp
+  source : varchar
+}
+
+entity aqi_snapshots {
+  * id : uuid <<PK>>
+  --
+  device_id : uuid
+  state : varchar
+  aqi_value : decimal
+  calculated_at : timestamp
+}
+
+entity threshold_breaches {
+  * id : uuid <<PK>>
+  --
+  reading_id : uuid <<FK>>
+  metric : varchar
+  measured_value : decimal
+  threshold_value : decimal
+  occurred_at : timestamp
+}
+
+entity sensor_anomalies {
+  * id : uuid <<PK>>
+  --
+  reading_id : uuid <<FK>>
+  reason : varchar
+  detected_at : timestamp
+}
+
+telemetry_batches ||--o{ telemetry_readings
+telemetry_readings ||--o{ threshold_breaches
+telemetry_readings ||--o{ sensor_anomalies
+
+@enduml
