@@ -143,7 +143,7 @@ workspace "Vanana Platform - Development Deployment" "Development deployment dia
         deployment vanana "Development" "Development" {
             description "Development deployment diagram for Vanana Platform showing local Docker containers."
             include *
-            autoLayout lr
+            autoLayout lr 100 400
         }
         
         # ============================================
