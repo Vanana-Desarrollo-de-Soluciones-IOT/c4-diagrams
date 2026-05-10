@@ -68,77 +68,70 @@ workspace "Vanana Platform - Development Deployment" "Development deployment dia
         vanana.embeddedApp -> vanana.edgeApp "Telemetry" "MQTT"
 
         # ============================================
-        # DEVELOPMENT DEPLOYMENT ENVIRONMENT
+        # DEPLOYMENT ENVIRONMENT
         # ============================================
-        development = deploymentEnvironment "Development" {
+        deploymentEnvironment "Development" {
             
-            bigBankWAN = deploymentNode "Big Bank Wide Area Network" "" "" {
-                
-                devLaptop = deploymentNode "Developer Laptop" "" "Microsoft Windows 11 or Apple macOS" {
-                    
-                    # Frontend Section
-                    webServerContainer = deploymentNode "Web Server Container" "" "Docker Container" {
-                        webServer = deploymentNode "Web Server" "" "nginx" {
-                            staticContent = containerInstance vanana.landingPage
-                        }
+            cloud = deploymentNode "Vanana Cloud" "" "Linux / Docker" {
+
+                # Backend Section
+                backendContainer = deploymentNode "Backend Container" "" "Docker Container" {
+
+                    jvm = deploymentNode "Java Virtual Machine" "" "Eclipse Temurin - JDK 25 - LTS" {
+                        backendInstance = containerInstance vanana.platformApi
                     }
-                    
-                    # Dashboard Section
-                    dashboardServer = deploymentNode "Dashboard Server" "" "Angular CLI" {
-                        webAppInstance = containerInstance vanana.webApp
-                        spaInstance = containerInstance vanana.spa
-                    }
-                    
-                    # Mobile Section
-                    mobileContainer = deploymentNode "Mobile Container" "" "Android Emulator" {
-                        mobileInstance = containerInstance vanana.mobileApp
-                        mobileDbInstance = containerInstance vanana.mobileDb
-                    }
-                    
-                    # Backend Section
-                    backendContainer = deploymentNode "Backend Container" "" "Docker Container" {
-                        
-                        jvm = deploymentNode "Java Virtual Machine" "" "Eclipse Temurin - JDK 25 - LTS" {
-                            backendInstance = containerInstance vanana.platformApi
-                        }
-                        
-                        gatewayContainer = deploymentNode "Gateway Container" "" "Docker Container" {
-                            gatewayInstance = containerInstance vanana.apiGateway
-                        }
-                    }
-                    
-                    # Database Section
-                    databaseContainer = deploymentNode "Database Server Container" "" "Docker Container" {
-                        databaseServer = deploymentNode "Database Server" "" "PostgreSQL 16" {
-                            databaseInstance = containerInstance vanana.postgresDb
-                        }
-                    }
-                    
-                    # Redis Section
-                    redisContainer = deploymentNode "Redis Container" "" "Docker Container" {
-                        redisInstance = containerInstance vanana.redisDb
-                    }
-                    
-                    # Edge Section
-                    edgeContainer = deploymentNode "Edge Container" "" "Docker Container" {
-                        edgeInstance = deploymentNode "Edge Station" "" "Python 3.11" {
-                            edgeAppInstance = containerInstance vanana.edgeApp
-                            edgeDbInstance = containerInstance vanana.edgeDb
-                        }
-                    }
-                    
-                    # Embedded Section
-                    embeddedContainer = deploymentNode "Embedded Simulator" "" "Docker Container / QEMU" {
-                        embeddedInstance = containerInstance vanana.embeddedApp
+
+                    gatewayContainer = deploymentNode "Gateway Container" "" "Docker Container" {
+                        gatewayInstance = containerInstance vanana.apiGateway
                     }
                 }
-                
-                # External Systems
-                dataCenter = deploymentNode "Big Bank Data Center" "" "" {
-                    coreSystem = deploymentNode "corebanking-dev" "" "Ubuntu 24.04 LTS" {
-                        # External systems for dev
+
+                # Database Section
+                databaseContainer = deploymentNode "Database Server Container" "" "Docker Container" {
+                    databaseServer = deploymentNode "Database Server" "" "PostgreSQL 16" {
+                        databaseInstance = containerInstance vanana.postgresDb
                     }
                 }
+
+                # Redis Section
+                redisContainer = deploymentNode "Redis Container" "" "Docker Container" {
+                    redisInstance = containerInstance vanana.redisDb
+                }
+            }
+
+            # Mobile - User's smartphone
+            mobileContainer = deploymentNode "Mobile Device" "" "Android / iOS" {
+                mobileInstance = containerInstance vanana.mobileApp
+                mobileDbInstance = containerInstance vanana.mobileDb
+            }
+
+            # Edge Station - On-site local gateway
+            edgeContainer = deploymentNode "Edge Station" "" "Physical Hardware / Python" {
+                edgeInstance = containerInstance vanana.edgeApp
+                edgeDbInstance = containerInstance vanana.edgeDb
+            }
+
+            # Embedded Device - Physical sensor hardware
+            embeddedContainer = deploymentNode "Embedded Device" "" "Physical Hardware / C++" {
+                embeddedInstance = containerInstance vanana.embeddedApp
+            }
+
+            # External Systems - Deployed outside Vanana Cloud
+            vercel = deploymentNode "Vercel" "" "Static Website Hosting" {
+                landingPageContainer = deploymentNode "Landing Page" "" "Vercel" {
+                    landingPageInstance = containerInstance vanana.landingPage
+                }
+                webAppContainer = deploymentNode "Web App" "" "Vercel" {
+                    webAppInstance = containerInstance vanana.webApp
+                    spaInstance = containerInstance vanana.spa
+                }
+            }
+
+            externalServices = deploymentNode "External Services" "" "" {
+                googleInstance = softwareSystemInstance google
+                stripeInstance = softwareSystemInstance stripe
+                resendInstance = softwareSystemInstance resend
+                hardwareInstance = softwareSystemInstance hardware
             }
         }
     }
@@ -196,7 +189,6 @@ workspace "Vanana Platform - Development Deployment" "Development deployment dia
                 background #ca8a04
             }
             element "Deployment Node" {
-                background #ffffff
                 color #374151
             }
         }
