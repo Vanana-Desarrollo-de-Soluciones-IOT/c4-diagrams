@@ -35,7 +35,8 @@ workspace "Vanana Platform - Development Deployment" "Development deployment dia
             
             edgeDb = container "Edge SQLite" "Local device state and sync data." "SQLite" "Database"
             
-            embeddedApp = container "Embedded App" "Firmware on air sensor device." "C/C++" "Embedded"
+            embeddedApp = container "Embedded App" "Firmware on air sensor device." "C++" "Embedded"
+            kafka = container "Kafka Message Broker" "Async message broker that decouples edge telemetry from platform processing." "Apache Kafka" "MessageBroker"
         }
 
         # ============================================
@@ -63,9 +64,12 @@ workspace "Vanana Platform - Development Deployment" "Development deployment dia
         vanana.platformApi -> stripe "Payments" "REST API"
         vanana.platformApi -> resend "Emails" "REST API"
         vanana.edgeApp -> vanana.edgeDb "Local storage" "SQLite"
-        vanana.edgeApp -> vanana.apiGateway "Sync" "HTTPS"
+        vanana.edgeApp -> vanana.kafka "Publishes telemetry and device status" "Kafka Wire Protocol"
+        vanana.kafka -> vanana.platformApi "Delivers telemetry events" "Kafka Wire Protocol"
+        vanana.platformApi -> vanana.kafka "Publishes remote device commands" "Kafka Wire Protocol"
+        vanana.kafka -> vanana.edgeApp "Delivers remote command events" "Kafka Wire Protocol"
         vanana.embeddedApp -> hardware "Sensors" "GPIO/I2C"
-        vanana.embeddedApp -> vanana.edgeApp "Telemetry" "MQTT"
+        vanana.embeddedApp -> vanana.edgeApp "Telemetry" "REST/HTTPS"
 
         # ============================================
         # DEPLOYMENT ENVIRONMENT
@@ -83,6 +87,10 @@ workspace "Vanana Platform - Development Deployment" "Development deployment dia
 
                     gatewayContainer = deploymentNode "Gateway Container" "" "Docker Container" {
                         gatewayInstance = containerInstance vanana.apiGateway
+                    }
+
+                    kafkaContainer = deploymentNode "Kafka Container" "" "Docker Container" {
+                        kafkaInstance = containerInstance vanana.kafka
                     }
                 }
 
