@@ -22,8 +22,12 @@ rectangle "Vercel (Dashboard)" as v2 {
 }
 
 rectangle "Azure Event Hub (Backend)" {
+
     rectangle "API GATEWAY\n(Spring Cloud)" as gateway
+    
     rectangle "API Platform\n(Java 25, Spring)" as platform
+    
+    queue "Kafka\n(Event Streaming)" as kafka
     
     database "Azure Database for\nPostgreSQL" as postgres
     database "Redis Cloud" as redis
@@ -55,9 +59,12 @@ gateway -right-> platform : "Routing"
 platform --> postgres : "Persistent storage"
 platform --> redis : "Session/Real-time cache"
 
+' --- Event Processing ---
+edge --> kafka : "Publishes telemetry events"
+kafka --> platform : "Consumes events"
+
 ' --- IoT/Edge Flow ---
 embedded -right-> edge : "Sends telemetry"
 edge --> sqlite_edge : "Local data buffer"
-edge --> gateway : "Data synchronization"
 
 @enduml
