@@ -54,9 +54,9 @@ workspace "Vanana Platform" "High-level architecture for smart device management
             platformDatabase = container "Platform PostgreSQL Database" "Stores facilities, devices, telemetry summaries, user preferences, and platform operational data." "PostgreSQL" "Database"
             platformRedis = container "Platform Redis Database" "Stores sessions, access tokens, verification codes, rate limits, and short-lived platform data." "Redis" "Redis"
             clairEmbeddedApp = container "Clair Embedded Application" "Runs on the air sensor device to collect measurements and expose device telemetry locally." "Embedded firmware" "Embedded" {
-                embeddedController = component "Embedded Controller" "Inbound adapter that receives local commands and telemetry ticks." "C/C++" "InboundAdapter,Firmware"
-                embeddedTelemetryService = component "Embedded Telemetry Service" "Application service that validates and normalizes sensor readings before publish." "C/C++" "ApplicationService,Firmware"
-                embeddedDomainModel = component "Embedded Domain Model" "Domain rules for device safety, valid ranges, and state transitions." "C/C++" "DomainModel,Firmware"
+                embeddedController = component "Embedded Controller" "Inbound adapter that receives local commands and telemetry ticks." "C++" "InboundAdapter,Firmware"
+                embeddedTelemetryService = component "Embedded Telemetry Service" "Application service that validates and normalizes sensor readings before publish." "C++" "ApplicationService,Firmware"
+                embeddedDomainModel = component "Embedded Domain Model" "Domain rules for device safety, valid ranges, and state transitions." "C++" "DomainModel,Firmware"
                 embeddedIoAdapter = component "Embedded IO Adapter" "Outbound adapter for hardware IO, local state cache, and BLE/Wi-Fi telemetry publishing." "GPIO/I2C/UART + BLE/Wi-Fi" "OutboundAdapter,Firmware"
             }
             clairEdgeStationApp = container "Clair Edge Station Application" "Runs on-site as the local edge gateway for air sensor devices and synchronizes data with the platform." "Flask" "Edge" {
@@ -67,6 +67,7 @@ workspace "Vanana Platform" "High-level architecture for smart device management
                 edgeIoAdapter = component "Edge IO Adapter" "Outbound adapter for MQTT device messaging, HTTPS cloud sync, and SQLite persistence." "MQTT + HTTPS + SQLite" "OutboundAdapter,EdgeComponent"
             }
             edgeSqliteDatabase = container "Edge SQLite Database" "Stores local device state, telemetry snapshots, and offline synchronization data at the edge." "SQLite" "SQLite"
+            kafka = container "Kafka Message Broker" "Async message broker that decouples edge telemetry ingestion from platform processing." "Apache Kafka" "MessageBroker"
         }
 
         # External Systems with specific tags for coloring
@@ -174,11 +175,13 @@ workspace "Vanana Platform" "High-level architecture for smart device management
         embeddedTelemetryService -> embeddedDomainModel "Applies safety and validity rules" "In-process call"
         embeddedTelemetryService -> embeddedIoAdapter "Publishes telemetry and updates local runtime state" "In-process call"
         embeddedTelemetryService -> hardware "Applies safe device-level actions when required" "GPIO/I2C/UART"
-        clairEdgeStationApp -> clairEmbeddedApp "Collects telemetry and sends local device commands" "MQTT/Local network"
+        clairEdgeStationApp -> clairEmbeddedApp "Collects telemetry and sends local device commands" "REST/HTTPS"
         clairEdgeStationApp -> edgeSqliteDatabase "Stores and retrieves local device state, telemetry snapshots, and offline sync data" "SQLite"
-        clairEdgeStationApp -> apiGateway "Sends processed air quality telemetry and device status to the cloud" "JSON/HTTPS"
-        apiGateway -> clairEdgeStationApp "Delivers remote device commands to the edge station" "JSON/HTTPS"
-        embeddedIoAdapter -> clairEdgeStationApp "Publishes local telemetry to the edge station" "MQTT/Local network"
+        clairEdgeStationApp -> kafka "Publishes air quality telemetry and device status events" "Kafka Wire Protocol"
+        kafka -> platformApi "Delivers telemetry and device events to the platform" "Kafka Wire Protocol"
+        platformApi -> kafka "Publishes remote device commands as events" "Kafka Wire Protocol"
+        kafka -> clairEdgeStationApp "Delivers remote command events to the edge" "Kafka Wire Protocol"
+        embeddedIoAdapter -> clairEdgeStationApp "Publishes local telemetry to the edge station" "REST/HTTPS"
         edgeController -> edgeProcessingService "Invokes local telemetry and health use cases" "In-process call"
         edgeController -> edgeSyncService "Invokes sync and command use cases" "In-process call"
         edgeIoAdapter -> edgeProcessingService "Forwards telemetry messages from embedded devices" "In-process call"
@@ -186,10 +189,8 @@ workspace "Vanana Platform" "High-level architecture for smart device management
         edgeProcessingService -> edgeIoAdapter "Persists validated telemetry snapshots" "In-process call"
         edgeSyncService -> edgeDomainModel "Applies retry, batching, and routing rules" "In-process call"
         edgeSyncService -> edgeIoAdapter "Reads local queue/checkpoints and pushes telemetry" "In-process call"
-        edgeIoAdapter -> apiGateway "Synchronizes edge telemetry and status" "JSON/HTTPS"
-        apiGateway -> edgeController "Delivers remote commands to edge station endpoints" "JSON/HTTPS"
         edgeSyncService -> edgeIoAdapter "Dispatches commands to target embedded devices" "MQTT/Local network"
-        edgeIoAdapter -> clairEmbeddedApp "Dispatches commands and receives telemetry streams" "MQTT/Local network"
+        edgeIoAdapter -> clairEmbeddedApp "Dispatches commands and receives telemetry streams" "REST/HTTPS"
         edgeIoAdapter -> edgeSqliteDatabase "Stores snapshots, queues, and checkpoints" "SQLite"
 
     }
@@ -216,6 +217,7 @@ workspace "Vanana Platform" "High-level architecture for smart device management
             include clairEmbeddedApp
             include clairEdgeStationApp
             include edgeSqliteDatabase
+            include kafka
             include hardware
             include google
             include resend
