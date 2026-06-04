@@ -8,9 +8,26 @@ workspace "Vanana Platform" "High-level architecture for smart device management
         # Central System
         vanana = softwareSystem "Vanana Platform" "Central platform for monitoring, controlling, and automating IoT devices." {
             landingPage = container "Landing Page" "Public website for presenting the Vanana Platform." "HTML / CSS / JavaScript" "WebBrowser,Landing"
-            webApp = container "Web App" "Authenticated web application for Vanana users." "Angular" "Angular"
+            webApp = container "Web App" "Authenticated web application for Vanana users." "Angular" "Angular" {
+                webSharedContext = component "Shared" "Shared UI shell, NotificationService for OneSignal, reusable components, logos, icons, guards, and cross-cutting presentation helpers." "Angular / TypeScript" "Component"
+                webIamContext = component "IAM" "Registration, login, email confirmation, session state, route guards, and notification permissions." "Angular / TypeScript" "Component"
+                webDeviceContext = component "Device" "Organizations, spaces, devices, pairing, commands, thresholds, and ACL access to evaluation context." "Angular / TypeScript" "Component"
+                webAnalyticsContext = component "Analytics" "Consolidated views, metrics, trends, ICA, and navigation by org/space/device using device and evaluation facades." "Angular / TypeScript" "Component"
+                webAlertingContext = component "Alerting" "Active and resolved alerts, severity, pagination, daily summary, and device hierarchy lookups." "Angular / TypeScript" "Component"
+                webBillingContext = component "Billing" "Plans, Premium subscription, checkout, and plan state." "Angular / TypeScript" "Component"
+                webNotificationsContext = component "Notifications" "Push notifications, permissions, and notification delivery state." "Angular / TypeScript" "Component"
+                webEvaluationContext = component "Evaluation" "Device telemetry evaluation, latest technical state, and connection state." "Angular / TypeScript" "Component"
+            }
             spa = container "Single Page Application" "Client-side application experience loaded by the web app." "Angular" "WebBrowser,Angular"
-            mobileApp = container "Mobile App" "Mobile application for Vanana users." "Flutter" "MobileApp"
+            mobileApp = container "Mobile App" "Mobile application for Vanana users." "Flutter" "MobileApp" {
+                mobileSharedContext = component "Shared" "Common UI components, app bar, bottom navigation, and icons. No business logic." "Flutter / Dart" "Component"
+                mobileIamContext = component "IAM" "Login, registration, session state, and token handling." "Flutter / Dart" "Component"
+                mobileDeviceContext = component "Devices" "Organizations, spaces, devices, thresholds, and commands." "Flutter / Dart" "Component"
+                mobileEvaluationContext = component "Evaluation" "Reads the latest telemetry and evaluation state for a device." "Flutter / Dart" "Component"
+                mobileAnalyticsContext = component "Analytics" "Dashboard, trends, and live telemetry." "Flutter / Dart" "Component"
+                mobileAlertsContext = component "Alerts" "Alert list, filters, and daily summary." "Flutter / Dart" "Component"
+                mobileNotificationsContext = component "Notifications" "Push notification history." "Flutter / Dart" "Component"
+            }
             mobileSqliteDatabase = container "Mobile SQLite Database" "Stores local mobile cache, user preferences, and offline data." "SQLite" "SQLite"
             apiGateway = container "API Gateway" "Routes client requests to Vanana backend services." "Spring Cloud Gateway / Java" "Gateway"
             platformApi = container "Platform API" "Handles core Vanana features, identity and access management, facilities, devices, telemetry, and user-facing workflows." "Spring Boot / Java 25" "SpringBoot" {
@@ -60,11 +77,11 @@ workspace "Vanana Platform" "High-level architecture for smart device management
                 embeddedIoAdapter = component "Embedded IO Adapter" "Outbound adapter for hardware IO, local state cache, and BLE/Wi-Fi telemetry publishing." "GPIO/I2C/UART + BLE/Wi-Fi" "OutboundAdapter,Firmware"
             }
             clairEdgeStationApp = container "Clair Edge Station Application" "Runs on-site as the local edge gateway for air sensor devices and synchronizes data with the platform." "Flask" "Edge" {
-                edgeController = component "Edge Controller" "Inbound adapter that exposes local HTTP endpoints for mobile/operator access." "Flask/Python" "InboundAdapter,EdgeComponent"
-                edgeProcessingService = component "Edge Processing Service" "Application service that ingests telemetry, deduplicates, and prepares local records." "Python" "ApplicationService,EdgeComponent"
-                edgeSyncService = component "Edge Sync Service" "Application service that coordinates offline-first synchronization and command dispatch." "Python" "ApplicationService,EdgeComponent"
-                edgeDomainModel = component "Edge Domain Model" "Domain rules for ingestion, deduplication, retry windows, and command routing constraints." "Python" "DomainModel,EdgeComponent"
-                edgeIoAdapter = component "Edge IO Adapter" "Outbound adapter for MQTT device messaging, HTTPS cloud sync, and SQLite persistence." "MQTT + HTTPS + SQLite" "OutboundAdapter,EdgeComponent"
+                edgeSharedContext = component "Shared" "Capa comun de persistencia e infraestructura. Configura Peewee sobre SQLite y migraciones automaticas de esquemas al arranque de Flask." "Python / Peewee" "EdgeComponent"
+                edgeProvisioningContext = component "Provisioning" "Mantiene un espejo local en SQLite de los metadatos de los dispositivos registrados en el backend central." "Python" "EdgeComponent"
+                edgeIamContext = component "IAM" "Autenticacion local sin latencia de red y publicacion del estado de conexion (presencia)." "Python" "EdgeComponent"
+                edgeDeviceContext = component "Device" "Recepcion de telemetria IoT y despacho de comandos enviados desde la nube." "Python" "EdgeComponent"
+                edgeAlertingContext = component "Alerting" "Almacenamiento local de incidentes generados por el motor de reglas central para consumo del firmware." "Python" "EdgeComponent"
             }
             edgeSqliteDatabase = container "Edge SQLite Database" "Stores local device state, telemetry snapshots, and offline synchronization data at the edge." "SQLite" "SQLite"
             kafka = container "Kafka Message Broker" "Async message broker that decouples edge telemetry ingestion from platform processing." "Apache Kafka" "MessageBroker"
@@ -74,6 +91,7 @@ workspace "Vanana Platform" "High-level architecture for smart device management
         hardware = softwareSystem "Clair Hardware" "Physical devices (sensors and actuators) installed on-site." "External,Hardware"
         google = softwareSystem "Google OAuth2" "External service for secure user authentication." "External,Google"
         stripe = softwareSystem "Stripe" "External platform for payment processing and subscription management." "External,Stripe"
+        onesignal = softwareSystem "OneSignal" "External platform for push notifications." "External,Push"
         resend = softwareSystem "Resend" "External platform for transactional email delivery." "External,Email"
 
         # User Relationships
@@ -96,12 +114,24 @@ workspace "Vanana Platform" "High-level architecture for smart device management
         admin -> mobileApp "Uses the mobile application to monitor sensors and manage facilities while on-site" "HTTPS"
         mobileApp -> mobileSqliteDatabase "Stores and retrieves local cache, user preferences, and offline data" "SQLite"
         mobileApp -> apiGateway "Reads processed telemetry and sends remote device commands through the cloud" "JSON/HTTPS"
+        mobileIamContext -> mobileSqliteDatabase "Stores tokens and session state" "SQLite"
+        mobileIamContext -> apiGateway "Uses auth APIs" "JSON/HTTPS"
+        mobileDeviceContext -> mobileEvaluationContext "Uses device health data" "In-process call"
+        mobileDeviceContext -> mobileSqliteDatabase "Stores device state and filters" "SQLite"
+        mobileDeviceContext -> apiGateway "Uses device APIs" "JSON/HTTPS"
+        mobileAnalyticsContext -> mobileDeviceContext "Uses org and device navigation" "In-process call"
+        mobileAnalyticsContext -> apiGateway "Uses analytics APIs" "JSON/HTTPS"
+        mobileAlertsContext -> apiGateway "Uses alerts APIs" "JSON/HTTPS"
+        mobileNotificationsContext -> apiGateway "Uses notifications APIs" "JSON/HTTPS"
+        mobileNotificationsContext -> mobileSqliteDatabase "Stores push history" "SQLite"
         apiGateway -> platformApi "Routes core platform API requests" "JSON/HTTPS"
         platformApi -> platformDatabase "Stores and retrieves facilities, devices, telemetry summaries, and operational data" "SQL"
         platformApi -> stripe "Creates checkout sessions, manages subscriptions, and receives payment status" "REST API/Webhooks"
         platformApi -> platformRedis "Stores and retrieves sessions, access tokens, verification codes, rate limits, and short-lived platform data" "RESP/TCP"
         platformApi -> google "Delegates social login and identity verification" "OpenID Connect"
         platformApi -> resend "Sends verification, password recovery, invitation, and account notification emails" "REST API"
+        webNotificationsContext -> onesignal "Uses OneSignal" "OneSignal SDK"
+        mobileNotificationsContext -> onesignal "Listens to push events" "OneSignal SDK"
         apiGateway -> iamContext "Routes authentication, authorization, and account requests" "JSON/HTTPS"
         iamContext -> iamInterfacesLayer "Exposes IAM entry points" "In-process call"
         iamInterfacesLayer -> iamApplicationLayer "Invokes IAM use cases" "In-process call"
@@ -178,20 +208,41 @@ workspace "Vanana Platform" "High-level architecture for smart device management
         clairEdgeStationApp -> clairEmbeddedApp "Collects telemetry and sends local device commands" "REST/HTTPS"
         clairEdgeStationApp -> edgeSqliteDatabase "Stores and retrieves local device state, telemetry snapshots, and offline sync data" "SQLite"
         clairEdgeStationApp -> kafka "Publishes air quality telemetry and device status events" "Kafka Wire Protocol"
-        kafka -> platformApi "Delivers telemetry and device events to the platform" "Kafka Wire Protocol"
-        platformApi -> kafka "Publishes remote device commands as events" "Kafka Wire Protocol"
+        kafka -> apiGateway "Delivers telemetry and device events to the platform" "Kafka Wire Protocol"
+        apiGateway -> kafka "Publishes remote device commands as events" "Kafka Wire Protocol"
         kafka -> clairEdgeStationApp "Delivers remote command events to the edge" "Kafka Wire Protocol"
         embeddedIoAdapter -> clairEdgeStationApp "Publishes local telemetry to the edge station" "REST/HTTPS"
-        edgeController -> edgeProcessingService "Invokes local telemetry and health use cases" "In-process call"
-        edgeController -> edgeSyncService "Invokes sync and command use cases" "In-process call"
-        edgeIoAdapter -> edgeProcessingService "Forwards telemetry messages from embedded devices" "In-process call"
-        edgeProcessingService -> edgeDomainModel "Applies ingestion and deduplication rules" "In-process call"
-        edgeProcessingService -> edgeIoAdapter "Persists validated telemetry snapshots" "In-process call"
-        edgeSyncService -> edgeDomainModel "Applies retry, batching, and routing rules" "In-process call"
-        edgeSyncService -> edgeIoAdapter "Reads local queue/checkpoints and pushes telemetry" "In-process call"
-        edgeSyncService -> edgeIoAdapter "Dispatches commands to target embedded devices" "MQTT/Local network"
-        edgeIoAdapter -> clairEmbeddedApp "Dispatches commands and receives telemetry streams" "REST/HTTPS"
-        edgeIoAdapter -> edgeSqliteDatabase "Stores snapshots, queues, and checkpoints" "SQLite"
+        webIamContext -> webSharedContext "Uses route guard" "In-process call"
+        webIamContext -> spa "Uses spa" "In-process call"
+        webAnalyticsContext -> webDeviceContext "Uses device facade" "ACL + Facade + DI"
+        webAnalyticsContext -> webEvaluationContext "Uses evaluation facade" "ACL + Facade + DI"
+        webAnalyticsContext -> spa "Uses spa" "In-process call"
+        webDeviceContext -> webEvaluationContext "Uses evaluation facade" "ACL + Facade + DI"
+        webDeviceContext -> spa "Uses spa" "In-process call"
+        webAlertingContext -> webDeviceContext "Uses device facade" "ACL + Facade + DI"
+        webAlertingContext -> spa "Uses spa" "In-process call"
+        webBillingContext -> stripe "Uses Stripe" "REST API/Webhooks"
+        webBillingContext -> spa "Uses spa" "In-process call"
+        webNotificationsContext -> webSharedContext "Uses NotificationService" "In-process call"
+        webNotificationsContext -> spa "Uses spa" "In-process call"
+        webEvaluationContext -> webSharedContext "Uses shared UI helpers" "In-process call"
+        webEvaluationContext -> spa "Uses spa" "In-process call"
+        edgeSharedContext -> edgeSqliteDatabase "Configures ORM and runs schema migrations" "SQLite"
+        edgeProvisioningContext -> kafka "Listens to clair.provisioning.devices.changed" "Kafka Wire Protocol"
+        edgeProvisioningContext -> edgeSqliteDatabase "Upserts device cache records" "SQLite"
+        edgeProvisioningContext -> edgeSharedContext "Uses shared persistence and infrastructure" "In-process call"
+        edgeIamContext -> edgeSqliteDatabase "Authenticates locally and tracks device presence" "SQLite"
+        edgeIamContext -> kafka "Publishes device presence events" "Kafka Wire Protocol"
+        edgeIamContext -> edgeSharedContext "Uses shared persistence and infrastructure" "In-process call"
+        edgeDeviceContext -> edgeIamContext "Authenticates telemetry and command requests" "In-process call"
+        edgeDeviceContext -> edgeSqliteDatabase "Stores telemetry and command outbox state" "SQLite"
+        edgeDeviceContext -> kafka "Publishes telemetry and ACK events" "Kafka Wire Protocol"
+        edgeDeviceContext -> clairEmbeddedApp "Sends pending commands and receives telemetry" "REST/HTTPS"
+        edgeDeviceContext -> edgeSharedContext "Uses shared persistence and infrastructure" "In-process call"
+        edgeAlertingContext -> kafka "Listens to incident change events" "Kafka Wire Protocol"
+        edgeAlertingContext -> edgeSqliteDatabase "Stores local incidents and alert state" "SQLite"
+        edgeAlertingContext -> clairEmbeddedApp "Exposes pending incidents and receives ACKs" "REST/HTTPS"
+        edgeAlertingContext -> edgeSharedContext "Uses shared persistence and infrastructure" "In-process call"
 
     }
 
@@ -220,9 +271,41 @@ workspace "Vanana Platform" "High-level architecture for smart device management
             include kafka
             include hardware
             include google
+            include onesignal
             include resend
             include admin
             include user
+            autoLayout lr
+        }
+
+        component webApp "WebAppComponents" {
+            description "Component diagram for the authenticated web application"
+            include webSharedContext
+            include webIamContext
+            include webDeviceContext
+            include webAnalyticsContext
+            include webAlertingContext
+            include webBillingContext
+            include webNotificationsContext
+            include webEvaluationContext
+            include spa
+            include onesignal
+            include stripe
+            autoLayout lr
+        }
+
+        component mobileApp "MobileAppComponents" {
+            description "Component diagram for the mobile application"
+            include mobileSharedContext
+            include mobileIamContext
+            include mobileDeviceContext
+            include mobileEvaluationContext
+            include mobileAnalyticsContext
+            include mobileAlertsContext
+            include mobileNotificationsContext
+            include mobileSqliteDatabase
+            include apiGateway
+            include onesignal
             autoLayout lr
         }
 
@@ -352,6 +435,9 @@ workspace "Vanana Platform" "High-level architecture for smart device management
             }
             element "Email" {
                 background #000000
+            }
+            element "Push" {
+                background #14b8a6
             }
             element "Container" {
                 background #2563eb
