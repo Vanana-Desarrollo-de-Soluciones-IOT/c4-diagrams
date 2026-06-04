@@ -8,7 +8,16 @@ workspace "Vanana Platform" "High-level architecture for smart device management
         # Central System
         vanana = softwareSystem "Vanana Platform" "Central platform for monitoring, controlling, and automating IoT devices." {
             landingPage = container "Landing Page" "Public website for presenting the Vanana Platform." "HTML / CSS / JavaScript" "WebBrowser,Landing"
-            webApp = container "Web App" "Authenticated web application for Vanana users." "Angular" "Angular"
+            webApp = container "Web App" "Authenticated web application for Vanana users." "Angular" "Angular" {
+                webSharedContext = component "Shared" "Shared UI shell, NotificationService for OneSignal, reusable components, logos, icons, guards, and cross-cutting presentation helpers." "Angular / TypeScript" "Component"
+                webIamContext = component "IAM" "Registration, login, email confirmation, session state, route guards, and notification permissions." "Angular / TypeScript" "Component"
+                webDeviceContext = component "Device" "Organizations, spaces, devices, pairing, commands, thresholds, and ACL access to evaluation context." "Angular / TypeScript" "Component"
+                webAnalyticsContext = component "Analytics" "Consolidated views, metrics, trends, ICA, and navigation by org/space/device using device and evaluation facades." "Angular / TypeScript" "Component"
+                webAlertingContext = component "Alerting" "Active and resolved alerts, severity, pagination, daily summary, and device hierarchy lookups." "Angular / TypeScript" "Component"
+                webBillingContext = component "Billing" "Plans, Premium subscription, checkout, and plan state." "Angular / TypeScript" "Component"
+                webNotificationsContext = component "Notifications" "Push notifications, permissions, and notification delivery state." "Angular / TypeScript" "Component"
+                webEvaluationContext = component "Evaluation" "Device telemetry evaluation, latest technical state, and connection state." "Angular / TypeScript" "Component"
+            }
             spa = container "Single Page Application" "Client-side application experience loaded by the web app." "Angular" "WebBrowser,Angular"
             mobileApp = container "Mobile App" "Mobile application for Vanana users." "Flutter" "MobileApp"
             mobileSqliteDatabase = container "Mobile SQLite Database" "Stores local mobile cache, user preferences, and offline data." "SQLite" "SQLite"
@@ -182,6 +191,21 @@ workspace "Vanana Platform" "High-level architecture for smart device management
         apiGateway -> kafka "Publishes remote device commands as events" "Kafka Wire Protocol"
         kafka -> clairEdgeStationApp "Delivers remote command events to the edge" "Kafka Wire Protocol"
         embeddedIoAdapter -> clairEdgeStationApp "Publishes local telemetry to the edge station" "REST/HTTPS"
+        webIamContext -> webSharedContext "Uses route guard" "In-process call"
+        webIamContext -> spa "Uses spa" "In-process call"
+        webAnalyticsContext -> webDeviceContext "Uses device facade" "ACL + Facade + DI"
+        webAnalyticsContext -> webEvaluationContext "Uses evaluation facade" "ACL + Facade + DI"
+        webAnalyticsContext -> spa "Uses spa" "In-process call"
+        webDeviceContext -> webEvaluationContext "Uses evaluation facade" "ACL + Facade + DI"
+        webDeviceContext -> spa "Uses spa" "In-process call"
+        webAlertingContext -> webDeviceContext "Uses device facade" "ACL + Facade + DI"
+        webAlertingContext -> spa "Uses spa" "In-process call"
+        webBillingContext -> stripe "Uses Stripe" "REST API/Webhooks"
+        webBillingContext -> spa "Uses spa" "In-process call"
+        webNotificationsContext -> webSharedContext "Uses NotificationService" "In-process call"
+        webNotificationsContext -> spa "Uses spa" "In-process call"
+        webEvaluationContext -> webSharedContext "Uses shared UI helpers" "In-process call"
+        webEvaluationContext -> spa "Uses spa" "In-process call"
         edgeSharedContext -> edgeSqliteDatabase "Configures ORM and runs schema migrations" "SQLite"
         edgeProvisioningContext -> kafka "Listens to clair.provisioning.devices.changed" "Kafka Wire Protocol"
         edgeProvisioningContext -> edgeSqliteDatabase "Upserts device cache records" "SQLite"
@@ -229,6 +253,21 @@ workspace "Vanana Platform" "High-level architecture for smart device management
             include resend
             include admin
             include user
+            autoLayout lr
+        }
+
+        component webApp "WebAppComponents" {
+            description "Component diagram for the authenticated web application"
+            include webSharedContext
+            include webIamContext
+            include webDeviceContext
+            include webAnalyticsContext
+            include webAlertingContext
+            include webBillingContext
+            include webNotificationsContext
+            include webEvaluationContext
+            include spa
+            include stripe
             autoLayout lr
         }
 
