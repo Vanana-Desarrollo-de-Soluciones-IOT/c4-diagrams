@@ -19,7 +19,15 @@ workspace "Vanana Platform" "High-level architecture for smart device management
                 webEvaluationContext = component "Evaluation" "Device telemetry evaluation, latest technical state, and connection state." "Angular / TypeScript" "Component"
             }
             spa = container "Single Page Application" "Client-side application experience loaded by the web app." "Angular" "WebBrowser,Angular"
-            mobileApp = container "Mobile App" "Mobile application for Vanana users." "Flutter" "MobileApp"
+            mobileApp = container "Mobile App" "Mobile application for Vanana users." "Flutter" "MobileApp" {
+                mobileSharedContext = component "Shared" "Common UI components, app bar, bottom navigation, and icons. No business logic." "Flutter / Dart" "Component"
+                mobileIamContext = component "IAM" "Login, registration, session state, and token handling." "Flutter / Dart" "Component"
+                mobileDeviceContext = component "Devices" "Organizations, spaces, devices, thresholds, and commands." "Flutter / Dart" "Component"
+                mobileEvaluationContext = component "Evaluation" "Reads the latest telemetry and evaluation state for a device." "Flutter / Dart" "Component"
+                mobileAnalyticsContext = component "Analytics" "Dashboard, trends, and live telemetry." "Flutter / Dart" "Component"
+                mobileAlertsContext = component "Alerts" "Alert list, filters, and daily summary." "Flutter / Dart" "Component"
+                mobileNotificationsContext = component "Notifications" "Push notification history." "Flutter / Dart" "Component"
+            }
             mobileSqliteDatabase = container "Mobile SQLite Database" "Stores local mobile cache, user preferences, and offline data." "SQLite" "SQLite"
             apiGateway = container "API Gateway" "Routes client requests to Vanana backend services." "Spring Cloud Gateway / Java" "Gateway"
             platformApi = container "Platform API" "Handles core Vanana features, identity and access management, facilities, devices, telemetry, and user-facing workflows." "Spring Boot / Java 25" "SpringBoot" {
@@ -83,6 +91,7 @@ workspace "Vanana Platform" "High-level architecture for smart device management
         hardware = softwareSystem "Clair Hardware" "Physical devices (sensors and actuators) installed on-site." "External,Hardware"
         google = softwareSystem "Google OAuth2" "External service for secure user authentication." "External,Google"
         stripe = softwareSystem "Stripe" "External platform for payment processing and subscription management." "External,Stripe"
+        onesignal = softwareSystem "OneSignal" "External platform for push notifications." "External,Push"
         resend = softwareSystem "Resend" "External platform for transactional email delivery." "External,Email"
 
         # User Relationships
@@ -105,12 +114,24 @@ workspace "Vanana Platform" "High-level architecture for smart device management
         admin -> mobileApp "Uses the mobile application to monitor sensors and manage facilities while on-site" "HTTPS"
         mobileApp -> mobileSqliteDatabase "Stores and retrieves local cache, user preferences, and offline data" "SQLite"
         mobileApp -> apiGateway "Reads processed telemetry and sends remote device commands through the cloud" "JSON/HTTPS"
+        mobileIamContext -> mobileSqliteDatabase "Stores tokens and session state" "SQLite"
+        mobileIamContext -> apiGateway "Uses auth APIs" "JSON/HTTPS"
+        mobileDeviceContext -> mobileEvaluationContext "Uses device health data" "In-process call"
+        mobileDeviceContext -> mobileSqliteDatabase "Stores device state and filters" "SQLite"
+        mobileDeviceContext -> apiGateway "Uses device APIs" "JSON/HTTPS"
+        mobileAnalyticsContext -> mobileDeviceContext "Uses org and device navigation" "In-process call"
+        mobileAnalyticsContext -> apiGateway "Uses analytics APIs" "JSON/HTTPS"
+        mobileAlertsContext -> apiGateway "Uses alerts APIs" "JSON/HTTPS"
+        mobileNotificationsContext -> apiGateway "Uses notifications APIs" "JSON/HTTPS"
+        mobileNotificationsContext -> mobileSqliteDatabase "Stores push history" "SQLite"
         apiGateway -> platformApi "Routes core platform API requests" "JSON/HTTPS"
         platformApi -> platformDatabase "Stores and retrieves facilities, devices, telemetry summaries, and operational data" "SQL"
         platformApi -> stripe "Creates checkout sessions, manages subscriptions, and receives payment status" "REST API/Webhooks"
         platformApi -> platformRedis "Stores and retrieves sessions, access tokens, verification codes, rate limits, and short-lived platform data" "RESP/TCP"
         platformApi -> google "Delegates social login and identity verification" "OpenID Connect"
         platformApi -> resend "Sends verification, password recovery, invitation, and account notification emails" "REST API"
+        webNotificationsContext -> onesignal "Uses OneSignal" "OneSignal SDK"
+        mobileNotificationsContext -> onesignal "Listens to push events" "OneSignal SDK"
         apiGateway -> iamContext "Routes authentication, authorization, and account requests" "JSON/HTTPS"
         iamContext -> iamInterfacesLayer "Exposes IAM entry points" "In-process call"
         iamInterfacesLayer -> iamApplicationLayer "Invokes IAM use cases" "In-process call"
@@ -250,6 +271,7 @@ workspace "Vanana Platform" "High-level architecture for smart device management
             include kafka
             include hardware
             include google
+            include onesignal
             include resend
             include admin
             include user
@@ -267,7 +289,23 @@ workspace "Vanana Platform" "High-level architecture for smart device management
             include webNotificationsContext
             include webEvaluationContext
             include spa
+            include onesignal
             include stripe
+            autoLayout lr
+        }
+
+        component mobileApp "MobileAppComponents" {
+            description "Component diagram for the mobile application"
+            include mobileSharedContext
+            include mobileIamContext
+            include mobileDeviceContext
+            include mobileEvaluationContext
+            include mobileAnalyticsContext
+            include mobileAlertsContext
+            include mobileNotificationsContext
+            include mobileSqliteDatabase
+            include apiGateway
+            include onesignal
             autoLayout lr
         }
 
@@ -397,6 +435,9 @@ workspace "Vanana Platform" "High-level architecture for smart device management
             }
             element "Email" {
                 background #000000
+            }
+            element "Push" {
+                background #14b8a6
             }
             element "Container" {
                 background #2563eb
