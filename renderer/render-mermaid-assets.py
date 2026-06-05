@@ -5,16 +5,17 @@ import argparse
 from pathlib import Path
 
 from mermaid_renderer import find_mmdc, render_mermaid_sources
-from structurizr_renderer import find_plantuml, find_structurizr, render_structurizr_sources
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Render Mermaid and Structurizr diagrams into SVG assets.")
+    allowed_roots = ["class-diagrams", "context-mapping"]
+    parser = argparse.ArgumentParser(description="Render Mermaid diagrams into SVG assets.")
     parser.add_argument(
         "--source-root",
         nargs="*",
-        default=["class-diagrams", "context-mapping", "c4"],
-        help="Source directories to scan. Defaults to class-diagrams, context-mapping, and c4.",
+        choices=allowed_roots,
+        default=allowed_roots,
+        help="Source directories to scan. Defaults to class-diagrams and context-mapping.",
     )
     parser.add_argument(
         "--output-root",
@@ -36,15 +37,17 @@ def main() -> int:
 
         shutil.rmtree(output_root)
 
+    c4_output = output_root / "c4"
+    if c4_output.exists():
+        import shutil
+
+        shutil.rmtree(c4_output)
+
     mmdc = find_mmdc()
-    structurizr = find_structurizr()
-    plantuml = find_plantuml()
+    rendered_mermaid = render_mermaid_sources(source_roots, output_root, mmdc)
 
-    rendered_mermaid = render_mermaid_sources([root for root in source_roots if root.name in {"class-diagrams", "context-mapping"}], output_root, mmdc)
-    rendered_structurizr = render_structurizr_sources([root for root in source_roots if root.name == "c4"], output_root, structurizr, plantuml)
-
-    if not rendered_mermaid and not rendered_structurizr:
-        print("No Mermaid or Structurizr sources were found.")
+    if not rendered_mermaid:
+        print("No Mermaid sources were found.")
         return 0
 
     print(f"SVGs generated in: {output_root}")
