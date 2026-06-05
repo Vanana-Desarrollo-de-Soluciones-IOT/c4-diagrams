@@ -1,4 +1,8 @@
 ```mermaid
+---
+title: DDD Basic Class Diagram - 4 Layers
+---
+
 classDiagram
 
 namespace interfaces {
@@ -22,6 +26,7 @@ namespace application {
 namespace domain {
     class Product {
         -id
+        -name
         -name
         -price
         +changePrice(newPrice)
