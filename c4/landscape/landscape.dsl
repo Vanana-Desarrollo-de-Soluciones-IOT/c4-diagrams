@@ -11,6 +11,7 @@ workspace "Vanana System Landscape" "System Landscape diagram showing all softwa
         stripe = softwareSystem "Stripe" "External payment processing platform."
         resend = softwareSystem "Resend" "External transactional email delivery platform."
         hardware = softwareSystem "Clair Hardware" "Physical air quality sensors and actuators."
+        onesignal = softwareSystem "OneSignal""External push notification and user messaging provider."
 
         # Relationships - people interact with multiple systems
         admin -> vanana "Manages facilities and monitors air quality"
@@ -26,6 +27,7 @@ workspace "Vanana System Landscape" "System Landscape diagram showing all softwa
         vanana -> stripe "Processes payments and subscriptions"
         vanana -> resend "Sends transactional emails"
         vanana -> hardware "Commands and receives telemetry"
+        vanana -> onesignal "Receives push notifications about home air quality alerts"
 
         # External systems may also have relationships
         stripe -> google "Uses for identity verification on checkout" "OAuth2"
