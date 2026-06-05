@@ -26,9 +26,8 @@ workspace "Vanana Platform" "High-level architecture for smart device management
                 mobileEvaluationContext = component "Evaluation" "Reads the latest telemetry and evaluation state for a device." "Flutter / Dart" "Component"
                 mobileAnalyticsContext = component "Analytics" "Dashboard, trends, and live telemetry." "Flutter / Dart" "Component"
                 mobileAlertsContext = component "Alerts" "Alert list, filters, and daily summary." "Flutter / Dart" "Component"
-                mobileNotificationsContext = component "Notifications" "Push notification history." "Flutter / Dart" "Component"
+            mobileNotificationsContext = component "Notifications" "Push notification history." "Flutter / Dart" "Component"
             }
-            mobileSqliteDatabase = container "Mobile SQLite Database" "Stores local mobile cache, user preferences, and offline data." "SQLite" "SQLite"
             apiGateway = container "API Gateway" "Routes client requests to Vanana backend services." "Spring Cloud Gateway / Java" "Gateway"
             platformApi = container "Platform API" "Handles core Vanana features, identity and access management, facilities, devices, telemetry, and user-facing workflows." "Spring Boot / Java 25" "SpringBoot" {
                 iamContext = component "IAM" "Handles authentication, authorization, sessions, roles, permissions, and OAuth2 login flows." "Spring Boot / Java 25" "Bounded Context"
@@ -112,18 +111,14 @@ workspace "Vanana Platform" "High-level architecture for smart device management
         spa -> apiGateway "Calls protected platform APIs through the gateway" "JSON/HTTPS"
         user -> mobileApp "Uses the mobile application to control devices and view account information" "HTTPS"
         admin -> mobileApp "Uses the mobile application to monitor sensors and manage facilities while on-site" "HTTPS"
-        mobileApp -> mobileSqliteDatabase "Stores and retrieves local cache, user preferences, and offline data" "SQLite"
         mobileApp -> apiGateway "Reads processed telemetry and sends remote device commands through the cloud" "JSON/HTTPS"
-        mobileIamContext -> mobileSqliteDatabase "Stores tokens and session state" "SQLite"
         mobileIamContext -> apiGateway "Uses auth APIs" "JSON/HTTPS"
         mobileDeviceContext -> mobileEvaluationContext "Uses device health data" "In-process call"
-        mobileDeviceContext -> mobileSqliteDatabase "Stores device state and filters" "SQLite"
         mobileDeviceContext -> apiGateway "Uses device APIs" "JSON/HTTPS"
         mobileAnalyticsContext -> mobileDeviceContext "Uses org and device navigation" "In-process call"
         mobileAnalyticsContext -> apiGateway "Uses analytics APIs" "JSON/HTTPS"
         mobileAlertsContext -> apiGateway "Uses alerts APIs" "JSON/HTTPS"
         mobileNotificationsContext -> apiGateway "Uses notifications APIs" "JSON/HTTPS"
-        mobileNotificationsContext -> mobileSqliteDatabase "Stores push history" "SQLite"
         apiGateway -> platformApi "Routes core platform API requests" "JSON/HTTPS"
         platformApi -> platformDatabase "Stores and retrieves facilities, devices, telemetry summaries, and operational data" "SQL"
         platformApi -> stripe "Creates checkout sessions, manages subscriptions, and receives payment status" "REST API/Webhooks"
@@ -259,7 +254,6 @@ workspace "Vanana Platform" "High-level architecture for smart device management
             include webApp
             include spa
             include mobileApp
-            include mobileSqliteDatabase
             include apiGateway
             include platformApi
             include platformDatabase
@@ -303,7 +297,6 @@ workspace "Vanana Platform" "High-level architecture for smart device management
             include mobileAnalyticsContext
             include mobileAlertsContext
             include mobileNotificationsContext
-            include mobileSqliteDatabase
             include apiGateway
             include onesignal
             autoLayout lr
