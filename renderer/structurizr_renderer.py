@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import tempfile
 from pathlib import Path
@@ -21,8 +22,32 @@ def render_plantuml_file(plantuml: str, source_file: Path, output_dir: Path) -> 
     run([plantuml, "-tsvg", "--output-dir", str(output_dir), str(source_file)])
 
 
+def camel_to_kebab(text: str) -> str:
+    text = text.replace("_", "-")
+    text = text.replace(" ", "-")
+    text = text.replace("/", "-")
+    text = re.sub(r"(?<!^)(?=[A-Z])", "-", text).lower()
+    text = re.sub(r"-+", "-", text)
+    return text.strip("-")
+
+
+def source_output_dir(source_root: Path, source: Path) -> Path:
+    relative_parent = source.parent.relative_to(source_root)
+    if str(relative_parent) == ".":
+        return Path(source.stem)
+    return relative_parent
+
+
+def export_output_name(puml_file: Path) -> str:
+    stem = puml_file.stem
+    if stem.startswith("structurizr-"):
+        stem = stem.removeprefix("structurizr-")
+    stem = camel_to_kebab(stem)
+    return slugify(stem) or "diagram"
+
+
 def render_structurizr_dsl(source_root: Path, output_root: Path, source: Path, structurizr: str, plantuml: str) -> bool:
-    relative = source.relative_to(source_root)
+    source_dir = source_output_dir(source_root, source)
     export_root = Path(tempfile.mkdtemp(prefix="structurizr-export-"))
     rendered = False
     try:
@@ -40,15 +65,16 @@ def render_structurizr_dsl(source_root: Path, output_root: Path, source: Path, s
         )
 
         for puml_file in sorted(export_root.rglob("*.puml")):
-            relative_export = puml_file.relative_to(export_root)
             temp_svg_dir = Path(tempfile.mkdtemp(prefix="plantuml-export-"))
             try:
                 render_plantuml_file(plantuml, puml_file, temp_svg_dir)
-                final_dir = output_root / "c4" / relative.parent / source.stem / relative_export.parent
+                final_dir = output_root / "c4" / source_dir
                 final_dir.mkdir(parents=True, exist_ok=True)
 
-                for svg_file in sorted(temp_svg_dir.glob("*.svg")):
-                    final_name = f"{slugify(svg_file.stem) or 'diagram'}.svg"
+                rendered_svgs = sorted(temp_svg_dir.glob("*.svg"))
+                for index, svg_file in enumerate(rendered_svgs, start=1):
+                    suffix = "" if len(rendered_svgs) == 1 else f"-{index:02d}"
+                    final_name = f"{export_output_name(puml_file)}{suffix}.svg"
                     shutil.move(str(svg_file), str(final_dir / final_name))
                     rendered = True
             finally:

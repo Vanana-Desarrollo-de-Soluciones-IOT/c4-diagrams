@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import shutil
+import re
 import tempfile
 from pathlib import Path
 
@@ -13,6 +13,7 @@ def find_mmdc() -> str:
 
 def normalize_heading(heading: str, source_root_name: str) -> str:
     clean = heading.strip()
+    clean = re.sub(r"^\d+(?:\.\d+)*\.?\s*", "", clean)
 
     if source_root_name == "context-mapping":
         return "context-mapping"
@@ -24,9 +25,7 @@ def normalize_heading(heading: str, source_root_name: str) -> str:
         return "context-mapping"
 
     if clean.lower().endswith("layer"):
-        match = clean.split(".", 1)
-        label = match[-1].strip() if len(match) > 1 else clean
-        label = label.rsplit("Layer", 1)[0].strip()
+        label = re.sub(r"\s+Layer$", "", clean, flags=re.IGNORECASE).strip()
         return f"{slugify(label)}-layer"
 
     return slugify(clean) or "diagram"
