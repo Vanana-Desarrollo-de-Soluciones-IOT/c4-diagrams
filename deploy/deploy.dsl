@@ -21,7 +21,6 @@ workspace "Vanana Platform - Development Deployment" "Development deployment dia
             
             mobileApp = container "Mobile App" "Mobile application for Vanana users." "Flutter" "Mobile"
             
-            mobileDb = container "Mobile SQLite" "Local mobile cache and offline data." "SQLite" "Database"
             
             apiGateway = container "API Gateway" "Routes client requests to backend services." "Spring Cloud Gateway" "Java"
             
@@ -33,7 +32,6 @@ workspace "Vanana Platform - Development Deployment" "Development deployment dia
             
             edgeApp = container "Edge Application" "Local edge gateway for devices." "Python Flask" "Python"
             
-            edgeDb = container "Edge SQLite" "Local device state and sync data." "SQLite" "Database"
             
             embeddedApp = container "Embedded App" "Firmware on air sensor device." "C++" "Embedded"
             kafka = container "Kafka Message Broker" "Async message broker that decouples edge telemetry from platform processing." "Apache Kafka" "MessageBroker"
@@ -44,6 +42,7 @@ workspace "Vanana Platform - Development Deployment" "Development deployment dia
         # ============================================
         google = softwareSystem "Google OAuth2" "External authentication service."
         stripe = softwareSystem "Stripe" "Payment processing platform."
+        onesignal = softwareSystem "OneSignal" "Push notification platform."
         resend = softwareSystem "Resend" "Transactional email delivery."
         hardware = softwareSystem "Clair Hardware" "Physical air sensors."
 
@@ -55,18 +54,19 @@ workspace "Vanana Platform - Development Deployment" "Development deployment dia
         vanana.landingPage -> vanana.webApp "Redirects to"
         vanana.webApp -> vanana.spa "Serves"
         vanana.spa -> vanana.apiGateway "API calls" "JSON/HTTPS"
-        vanana.mobileApp -> vanana.mobileDb "Local data" "SQLite"
         vanana.mobileApp -> vanana.apiGateway "API calls" "JSON/HTTPS"
+        vanana.webApp -> stripe "Checkout and subscription state" "REST API/Webhooks"
+        vanana.webApp -> onesignal "Push notifications" "OneSignal SDK"
+        vanana.mobileApp -> onesignal "Push notifications" "OneSignal SDK"
         vanana.apiGateway -> vanana.platformApi "Routes" "JSON/HTTPS"
         vanana.platformApi -> vanana.postgresDb "Persistence" "SQL"
         vanana.platformApi -> vanana.redisDb "Cache/Sessions" "RESP"
         vanana.platformApi -> google "OAuth" "OpenID Connect"
         vanana.platformApi -> stripe "Payments" "REST API"
+        vanana.platformApi -> onesignal "Push notifications" "OneSignal SDK"
         vanana.platformApi -> resend "Emails" "REST API"
-        vanana.edgeApp -> vanana.edgeDb "Local storage" "SQLite"
         vanana.edgeApp -> vanana.kafka "Publishes telemetry and device status" "Kafka Wire Protocol"
-        vanana.kafka -> vanana.platformApi "Delivers telemetry events" "Kafka Wire Protocol"
-        vanana.platformApi -> vanana.kafka "Publishes remote device commands" "Kafka Wire Protocol"
+        vanana.kafka -> vanana.apiGateway "Delivers telemetry events" "Kafka Wire Protocol"
         vanana.kafka -> vanana.edgeApp "Delivers remote command events" "Kafka Wire Protocol"
         vanana.embeddedApp -> hardware "Sensors" "GPIO/I2C"
         vanana.embeddedApp -> vanana.edgeApp "Telemetry" "REST/HTTPS"
@@ -110,13 +110,11 @@ workspace "Vanana Platform - Development Deployment" "Development deployment dia
             # Mobile - User's smartphone
             mobileContainer = deploymentNode "Mobile Device" "" "Android / iOS" {
                 mobileInstance = containerInstance vanana.mobileApp
-                mobileDbInstance = containerInstance vanana.mobileDb
             }
 
             # Edge Station - On-site local gateway
             edgeContainer = deploymentNode "Edge Station" "" "Physical Hardware / Python" {
                 edgeInstance = containerInstance vanana.edgeApp
-                edgeDbInstance = containerInstance vanana.edgeDb
             }
 
             # Embedded Device - Physical sensor hardware
@@ -138,6 +136,7 @@ workspace "Vanana Platform - Development Deployment" "Development deployment dia
             externalServices = deploymentNode "External Services" "" "" {
                 googleInstance = softwareSystemInstance google
                 stripeInstance = softwareSystemInstance stripe
+                onesignalInstance = softwareSystemInstance onesignal
                 resendInstance = softwareSystemInstance resend
                 hardwareInstance = softwareSystemInstance hardware
             }

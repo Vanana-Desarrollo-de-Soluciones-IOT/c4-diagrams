@@ -9,7 +9,6 @@ actor "Facility Admin" as facility
 
 rectangle "Firebase" {
     rectangle "Mobile App\n(Flutter)" as mobileapp
-    database "SQLite" as sqlite_mobile
 }
 
 rectangle "Vercel (Frontend)" as v1 {
@@ -33,10 +32,17 @@ rectangle "Azure Event Hub (Backend)" {
     database "Redis Cloud" as redis
 }
 
+rectangle "External Providers" {
+    rectangle "Google OAuth2" as google
+    rectangle "Stripe" as stripe
+    rectangle "OneSignal" as onesignal
+    rectangle "Resend" as resend
+    rectangle "Clair Hardware" as hardware
+}
+
 rectangle "Azure IoT (Edge)" {
     rectangle "Embedded Application\n(C++)" as embedded
     rectangle "Edge Application\n(Python Flask)" as edge
-    database "SQLite" as sqlite_edge
 }
 
 ' --- User Relationships ---
@@ -50,8 +56,10 @@ landing --> webapp : "Call to Action (Login/Sign-up)"
 webapp --> spa : "Loads main module"
 
 ' --- Mobile & Web Connections ---
-mobileapp --> sqlite_mobile : "Local persistence"
 mobileapp --> gateway : "HTTPS/REST requests"
+webapp --> stripe : "Checkout and subscription state"
+webapp --> onesignal : "Push notifications"
+mobileapp --> onesignal : "Push notifications"
 spa --> gateway : "API consumption"
 
 ' --- Backend Orchestration ---
@@ -60,11 +68,17 @@ platform --> postgres : "Persistent storage"
 platform --> redis : "Session/Real-time cache"
 
 ' --- Event Processing ---
-edge --> kafka : "Publishes telemetry events"
-kafka --> platform : "Consumes events"
+ edge --> kafka : "Publishes telemetry events"
+ kafka --> gateway : "Consumes events"
 
 ' --- IoT/Edge Flow ---
 embedded -right-> edge : "Sends telemetry"
-edge --> sqlite_edge : "Local data buffer"
+
+' --- External Provider Integrations ---
+platform --> google : "OAuth"
+platform --> stripe : "Payments"
+platform --> onesignal : "Push notifications"
+platform --> resend : "Emails"
+embedded --> hardware : "Sensors"
 
 @enduml

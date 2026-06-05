@@ -8,7 +8,15 @@ facility["Facility Admin"]
 %% Firebase
 subgraph firebase["Firebase"]
     mobileapp["Mobile App<br/>(Flutter)"]
-    sqlite_mobile[("SQLite")]
+end
+
+%% External Providers
+subgraph external["External Providers"]
+    google["Google OAuth2"]
+    stripe["Stripe"]
+    onesignal["OneSignal"]
+    resend["Resend"]
+    hardware["Clair Hardware"]
 end
 
 %% Vercel Frontend
@@ -35,7 +43,6 @@ end
 subgraph edgegroup["Azure IoT (Edge)"]
     embedded["Embedded Application<br/>(C++)"]
     edge["Edge Application<br/>(Python Flask)"]
-    sqlite_edge[("SQLite")]
 end
 
 %% User Relationships
@@ -49,8 +56,10 @@ landing -->|"Call to Action<br/>(Login/Sign-up)"| webapp
 webapp -->|"Loads main module"| spa
 
 %% Mobile & Web Connections
-mobileapp -->|"Local persistence"| sqlite_mobile
 mobileapp -->|"HTTPS/REST requests"| gateway
+webapp -->|"Checkout and subscription state"| stripe
+webapp -->|"Push notifications"| onesignal
+mobileapp -->|"Push notifications"| onesignal
 spa -->|"API consumption"| gateway
 
 %% Backend Orchestration
@@ -59,10 +68,16 @@ platform -->|"Persistent storage"| postgres
 platform -->|"Session / Real-time cache"| redis
 
 %% Event Processing
-edge -->|"Publishes telemetry events"| kafka
-kafka -->|"Consumes events"| platform
+ edge -->|"Publishes telemetry events"| kafka
+ kafka -->|"Consumes events"| gateway
+
+%% External Provider Integrations
+platform -->|"OAuth"| google
+platform -->|"Payments"| stripe
+platform -->|"Push notifications"| onesignal
+platform -->|"Emails"| resend
+embedded -->|"Sensors"| hardware
 
 %% IoT / Edge Flow
 embedded -->|"Sends telemetry"| edge
-edge -->|"Local data buffer"| sqlite_edge
 ```
