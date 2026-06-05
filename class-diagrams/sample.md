@@ -67,14 +67,3 @@ ProductRepositoryImpl ..|> ProductRepository : implements
 ProductRepositoryImpl --> ProductModel : maps
 ProductRepositoryImpl --> Product : returns
 ```
-
-
-
-
-
-
-
-
-
-
-
